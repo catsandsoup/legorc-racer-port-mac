@@ -1,0 +1,7 @@
+[submodule "third_party/dirplayer-rs"]
+	path = third_party/dirplayer-rs
+	url = https://github.com/igorlira/dirplayer-rs.git
+[submodule "third_party/godot-cpp"]
+	path = third_party/godot-cpp
+	url = https://github.com/godotengine/godot-cpp.git
+	branch = 4.5

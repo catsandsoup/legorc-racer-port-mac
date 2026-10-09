@@ -1,0 +1,16 @@
+/importer/target/
+/game/bin/
+/game/.godot/
+/build/
+*.o
+*.os
+.sconsign.dblite
+# Never commit game data or anything derived from it.
+/game/data/
+*.dcr
+*.cct
+*.cxt
+*.dxr
+*.w3d
+*.hke
+/converted/

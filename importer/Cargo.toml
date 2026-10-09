@@ -1,0 +1,16 @@
+[package]
+name = "ssrc-import"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Converts your copy of LEGO Supersonic RC (game.dcr) into open formats for the native port"
+
+[dependencies]
+vm-rust = { path = "../third_party/dirplayer-rs/vm-rust", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp"] }
+flate2 = "1"
+serde_json = "1"
+async-std = "1.12"
+
+[profile.release]
+opt-level = 3
