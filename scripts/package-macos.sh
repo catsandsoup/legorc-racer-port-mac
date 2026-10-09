@@ -23,4 +23,6 @@ lipo -archs "$APP/Contents/MacOS/"* 2>/dev/null || true
 FINAL="$OUT_DIR/Supersonic-RC-macOS-AppleSilicon.zip"
 rm -f "$FINAL"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$FINAL"
+# Fail the build if anything game-derived got into the download.
+python3 scripts/release-guard.py --app "$FINAL"
 echo "packaged: $FINAL"

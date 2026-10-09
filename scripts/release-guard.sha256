@@ -1,0 +1,5 @@
+# SHA-256 of original game files the release guard rejects anywhere, even
+# renamed. One per line: "<sha256> <name>". Hashes are not game data.
+# Add the player's files with:
+#   python3 scripts/release-guard.py --print-hash ~/Downloads/game.dcr >> scripts/release-guard.sha256
+#   python3 scripts/release-guard.py --print-hash ~/Downloads/GUILibrary.cct >> scripts/release-guard.sha256

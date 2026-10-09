@@ -1,0 +1,25 @@
+name: Release guard
+
+# Fails if any pushed commit adds game-derived bytes (original files,
+# converted data, screenshots). The built app is checked in build-macos.yml
+# by scripts/package-macos.sh.
+on:
+  push:
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tracked files
+        run: python3 scripts/release-guard.py --tree
+
+      - name: Every new commit
+        env:
+          RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}
+        run: python3 scripts/release-guard.py --commits "$RANGE"
