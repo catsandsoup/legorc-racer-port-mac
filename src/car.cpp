@@ -312,13 +312,13 @@ void Car::update_sound(const DriveInput &in) {
 	bool t124 = !sound_stopped && (in.right || in.steer_axis > 0.3);
 	if (t126 && !sound_playing) {
 		real_t start = linear_velocity.length() * 4 - 150;
-		snd->play(1, PlayItem{ "CarStart", 1, sound_shift, MAX(0.0, start) });
+		snd->play(1, PlayItem{ "CarStart", 1, sound_shift, real_t(MAX(0.0, start)) });
 		snd->queue(1, PlayItem{ "CarLoop", 0, sound_shift, 0 });
 		sound_playing = true;
 	} else if (sound_playing && !t126) {
 		if (snd->current_member(1).to_lower() == "carstart") {
 			real_t st = SoundSystem::member_duration_ms("CarEnd") - snd->current_time_ms(1) / 2 - 10;
-			snd->play(1, PlayItem{ "CarEnd", 1, 0, MAX(0.0, st) });
+			snd->play(1, PlayItem{ "CarEnd", 1, 0, real_t(MAX(0.0, st)) });
 		} else {
 			snd->play(1, PlayItem{ "CarEnd" });
 		}

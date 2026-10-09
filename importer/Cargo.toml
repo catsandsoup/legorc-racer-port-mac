@@ -2,6 +2,8 @@
 name = "ssrc-import"
 version = "0.1.0"
 edition = "2021"
+authors = ["catsandsoup"]
+repository = "https://github.com/catsandsoup/legorc-racer-port-mac"
 license = "GPL-3.0-only"
 description = "Converts your copy of LEGO Supersonic RC (game.dcr) into open formats for the native port"
 

@@ -829,7 +829,7 @@ void DrivingSession::setup(SupersonicGame *p_game, ModeId mode_id) {
 
 	// Arrow (cloned from arrow2, drawn over the scene).
 	MeshInstance3D *amesh = nullptr;
-	prop_model_xform("scenes/arrow.glb", &amesh);
+	(void)prop_model_xform("scenes/arrow.glb", &amesh);
 	if (amesh) {
 		arrow = amesh;
 		add_child(arrow);
@@ -854,7 +854,6 @@ void DrivingSession::setup(SupersonicGame *p_game, ModeId mode_id) {
 
 void DrivingSession::first_frame() {
 	running = true;
-	sim_seconds = sim_seconds; // simTime continues from load
 	cam->update();
 	cam->camera->reset_physics_interpolation();
 }

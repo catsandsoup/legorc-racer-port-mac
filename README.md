@@ -1,5 +1,7 @@
 # Supersonic RC: native for Apple silicon
 
+By [catsandsoup](https://github.com/catsandsoup). See [AUTHORS.md](AUTHORS.md).
+
 A native Mac port of **LEGO Supersonic RC** (2003, Shockwave/Director 8.5).
 There's no Flash, no Shockwave and no emulator: the game logic was
 decompiled from Lingo and rewritten in C++, and every asset is converted to
@@ -115,6 +117,6 @@ LEGO and Supersonic RC are trademarks of the LEGO Group, which does not
 sponsor, authorise or endorse this project. This repository contains no game
 data. It converts files you already have, on your own computer.
 
-The port's code is GPL-3.0 (see [LICENSE](LICENSE)), because the converter
+Copyright © 2026 catsandsoup. The port's code is GPL-3.0 (see [LICENSE](LICENSE)), because the converter
 builds on DirPlayer (GPL-3.0). Godot is MIT. DejaVu fonts are under their own
 free licence (`game/fonts/LICENSE-DejaVu.txt`).
