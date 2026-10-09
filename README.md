@@ -96,8 +96,8 @@ Requirements: a Mac with Xcode command line tools, Rust, Python with `scons`,
 and Godot 4.7.2.
 
 ```sh
-git clone https://github.com/catsandsoup/supersonic-rc-native
-cd supersonic-rc-native
+git clone https://github.com/catsandsoup/legorc-racer-port-mac
+cd legorc-racer-port-mac
 git submodule update --init   # not --recursive: DirPlayer's own submodules aren't needed
 cargo build --release --manifest-path importer/Cargo.toml
 scons platform=macos arch=arm64 target=template_release
