@@ -10,6 +10,12 @@ ditto -x -k "$EXPORT_ZIP" "$WORK"
 APP="$(find "$WORK" -maxdepth 1 -name '*.app' | head -1)"
 [ -d "$APP" ] || { echo "no .app in $EXPORT_ZIP"; exit 1; }
 
+# Godot ships only a universal template; keep the Apple silicon slice.
+MAIN="$APP/Contents/MacOS/$(defaults read "$APP/Contents/Info" CFBundleExecutable)"
+if lipo -archs "$MAIN" | grep -q x86_64; then
+  lipo -thin arm64 "$MAIN" -output "$MAIN.arm64" && mv "$MAIN.arm64" "$MAIN"
+fi
+
 cp importer/target/release/ssrc-import "$APP/Contents/MacOS/ssrc-import"
 chmod +x "$APP/Contents/MacOS/ssrc-import"
 cp LICENSE README.md "$APP/Contents/Resources/"
