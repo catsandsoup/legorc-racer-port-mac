@@ -61,6 +61,7 @@ private:
 	Settings prefs;
 	bool unlocked[int(ModeId::COUNT)] = { true, false, false, false, false };
 	bool ctrl_unlock_all = false;
+	bool muted = false;
 	SoundSystem *sound = nullptr;
 	DrivingSession *session = nullptr;
 	int pending_mode = 0;

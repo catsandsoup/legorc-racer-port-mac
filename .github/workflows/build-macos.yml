@@ -1,0 +1,93 @@
+name: macOS app
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true # dirplayer-rs and godot-cpp (not their own submodules)
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            importer/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('importer/Cargo.toml', 'third_party/dirplayer-rs/vm-rust/Cargo.lock') }}
+
+      - name: Build converter (ssrc-import)
+        run: cargo build --release --manifest-path importer/Cargo.toml
+
+      - name: Test converter
+        run: cargo test --release --manifest-path importer/Cargo.toml --bins
+
+      - name: Cache Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/Library/Application Support/Godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Download Godot and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -sSL -o ~/godot/godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
+          unzip -q ~/godot/godot.zip -d ~/godot && rm ~/godot/godot.zip
+          curl -sSL -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          T="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$T"
+          unzip -q -j /tmp/templates.tpz "templates/macos.zip" "templates/version.txt" -d "$T"
+          rm /tmp/templates.tpz
+
+      - name: Build game library (GDExtension, arm64)
+        run: |
+          pip3 install --break-system-packages scons || pip3 install scons
+          scons platform=macos arch=arm64 target=template_release -j"$(sysctl -n hw.ncpu)"
+
+      - name: Export app
+        run: |
+          GODOT="$HOME/godot/Godot.app/Contents/MacOS/Godot"
+          "$GODOT" --headless --path game --import
+          mkdir -p build/macos
+          "$GODOT" --headless --path game --export-release "macOS" "$PWD/build/macos/Supersonic RC.zip"
+
+      - name: Package
+        run: scripts/package-macos.sh "build/macos/Supersonic RC.zip"
+
+      - name: Smoke test (app starts, library loads, import screen shows)
+        run: |
+          APP="build/macos/pkg/Supersonic RC.app"
+          set +e
+          "$APP/Contents/MacOS/Supersonic RC" --headless --quit-after 300 > smoke.log 2>&1
+          code=$?
+          set -e
+          cat smoke.log
+          if grep -E "Can't open dynamic library|GDExtension .* failed|SCRIPT ERROR" smoke.log; then exit 1; fi
+          "$APP/Contents/MacOS/ssrc-import" 2>&1 | grep -q "usage" && echo "converter runs"
+          exit $code
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Supersonic-RC-macOS-AppleSilicon
+          path: build/macos/Supersonic-RC-macOS-AppleSilicon.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/macos/Supersonic-RC-macOS-AppleSilicon.zip

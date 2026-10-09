@@ -2,6 +2,7 @@
 #include "assets.h"
 #include "sound.h"
 
+#include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/config_file.hpp>
 #include <godot_cpp/classes/dir_access.hpp>
@@ -143,18 +144,14 @@ void SupersonicGame::build_input_map() {
 		}
 	}
 	add_key("accelerate", KEY_UP);
-	add_key("accelerate", KEY_W);
 	add_joy_axis("accelerate", JOY_AXIS_TRIGGER_RIGHT, 1);
 	add_joy_button("accelerate", JOY_BUTTON_A);
 	add_key("brake", KEY_DOWN);
-	add_key("brake", KEY_S);
 	add_joy_axis("brake", JOY_AXIS_TRIGGER_LEFT, 1);
 	add_joy_button("brake", JOY_BUTTON_X);
 	add_key("steer_left", KEY_LEFT);
-	add_key("steer_left", KEY_A);
 	add_joy_button("steer_left", JOY_BUTTON_DPAD_LEFT);
 	add_key("steer_right", KEY_RIGHT);
-	add_key("steer_right", KEY_D);
 	add_joy_button("steer_right", JOY_BUTTON_DPAD_RIGHT);
 	add_key("handbrake", KEY_SPACE);
 	add_joy_button("handbrake", JOY_BUTTON_B);
@@ -499,6 +496,12 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 			toggle_settings_panel();
 			return;
 		}
+		if (key->get_keycode() == KEY_S && !key->is_command_or_control_pressed()) {
+			// gameTypeManager: keyPressed("s") toggled sound on/off.
+			muted = !muted;
+			AudioServer::get_singleton()->set_bus_mute(0, muted);
+			return;
+		}
 		if (key->get_keycode() == KEY_F11 || (key->get_keycode() == KEY_F && key->is_command_or_control_pressed() && key->is_ctrl_pressed())) {
 			set_option("window_mode", prefs.window_mode == 0 ? 1 : 0);
 			return;
@@ -658,8 +661,15 @@ void SupersonicGame::try_auto_import() {
 	dirs.push_back(os->get_system_dir(OS::SYSTEM_DIR_DOWNLOADS));
 	dirs.push_back(os->get_system_dir(OS::SYSTEM_DIR_DESKTOP));
 	dirs.push_back(os->get_system_dir(OS::SYSTEM_DIR_DOCUMENTS));
+	String home = os->get_environment("HOME");
+	if (!home.is_empty()) {
+		for (const char *sub : { "Downloads", "Desktop", "Documents", "" }) {
+			dirs.push_back(home.path_join(sub));
+		}
+	}
 	for (const String &d : dirs) {
 		String found = find_game_in(d, 1);
+		UtilityFunctions::print("[ssrc] looking for game files in ", d, found.is_empty() ? String(" - none") : " - found " + found);
 		if (!found.is_empty()) {
 			show_import("Found your Supersonic RC files:\n" + found + "\n\nConverting them for this Mac. This takes a second...");
 			call_deferred("import_from", found);

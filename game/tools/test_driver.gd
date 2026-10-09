@@ -61,11 +61,13 @@ func _process(delta: float) -> void:
 			else:
 				var ev := InputEventMouseButton.new()
 				ev.button_index = MOUSE_BUTTON_LEFT
-				ev.position = get_viewport().get_visible_rect().size / 2
+				# Stage (640x480) -> window pixels through the stretch transform.
+				var vs := get_viewport().get_visible_rect().size
+				var stage := Vector2(320, 240)
 				if step.begins_with("click:"):
 					var xy = step.substr(6).split("x")
-					var vs := get_viewport().get_visible_rect().size
-					ev.position = (vs - Vector2(640, 480)) / 2 + Vector2(float(xy[0]), float(xy[1]))
+					stage = Vector2(float(xy[0]), float(xy[1]))
+				ev.position = get_viewport().get_final_transform() * ((vs - Vector2(640, 480)) / 2 + stage)
 				Input.warp_mouse(ev.position)
 				var mm := InputEventMouseMotion.new()
 				mm.position = ev.position

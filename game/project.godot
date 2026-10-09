@@ -10,6 +10,7 @@ run/main_scene="res://main.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Supersonic RC"
 config/features=PackedStringArray("4.7")
+config/icon="res://icon.png"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0, 0, 0, 1)
 run/max_fps=0
