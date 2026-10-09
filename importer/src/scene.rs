@@ -250,13 +250,26 @@ pub fn convert(scene: &W3dScene, out_dir: &Path, glb_name: &str, opts: &SceneOpt
         }
     }
 
-    // Lights as data (the port rebuilds lighting itself).
-    let lights: Vec<serde_json::Value> = scene
-        .lights
-        .iter()
-        .map(|l| json!({"name": l.name.to_string(), "type": format!("{:?}", l.light_type).to_lowercase(), "color": l.color.to_vec(), "attenuation": l.attenuation.to_vec(), "spot_angle": l.spot_angle, "enabled": l.enabled}))
-        .collect();
+    // Lights as data (the port rebuilds lighting itself): resource colours
+    // plus each light node's world matrix (Director space). Directional and
+    // spot lights shine down their node's -Z axis.
+    let worlds = vm_rust::director::chunks::w3d::skeleton::build_node_world_matrices(&scene.nodes);
+    let mut lights = vec![];
+    for n in scene.nodes.iter().filter(|n| n.node_type == W3dNodeType::Light) {
+        let res = if !n.resource_name.is_empty() { n.resource_name.to_string() } else { n.name.to_string() };
+        let Some(l) = scene.lights.iter().find(|l| l.name.to_string() == res || l.name == n.name) else { continue };
+        let m = worlds.iter().find(|(k, _)| **k == n.name).map(|(_, m)| m.to_vec());
+        lights.push(json!({
+            "node": n.name.to_string(), "name": l.name.to_string(),
+            "type": format!("{:?}", l.light_type).to_lowercase(), "color": l.color.to_vec(),
+            "attenuation": l.attenuation.to_vec(), "spot_angle": l.spot_angle, "enabled": l.enabled,
+            "specular": l.specular, "world_matrix_director": m,
+        }));
+    }
     doc.extras = Some(json!({"lights": lights, "world_scale": WORLD_SCALE}));
+    let side = json!({"lights": lights});
+    std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+    std::fs::write(out_dir.join(glb_name.replace(".glb", "_lights.json")), serde_json::to_vec_pretty(&side).unwrap()).map_err(|e| e.to_string())?;
 
     std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
     std::fs::write(out_dir.join(glb_name), doc.to_glb()).map_err(|e| e.to_string())?;
