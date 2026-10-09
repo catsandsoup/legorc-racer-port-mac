@@ -4,6 +4,7 @@
 #                                     joy:<button> taps a controller button: a, b, x, y, start,
 #                                     back, up, down, left, right (D-pad)
 #   SSRC_TEST_INPUT=accelerate:1-6,steer_left:3-4   action windows (seconds after driving starts)
+#   SSRC_TEST_TAPS=joy:start@2,key:escape@4   button/key taps (seconds after driving starts)
 #   SSRC_TEST_SHOTS=0.5,2,5           screenshot times (seconds after driving starts; t<0 = menus)
 #   SSRC_TEST_OUT=/path/prefix        screenshot path prefix
 #   SSRC_TEST_QUIT=8                  quit after N seconds of driving
@@ -19,12 +20,31 @@ var out := "/tmp/ssrc"
 var game: Node
 var flow: Array = []
 var flow_t := 0.0
+var taps: Array = []
+var phys0 := 0
 const JOY_BUTTONS := {
 	"a": JOY_BUTTON_A, "b": JOY_BUTTON_B, "x": JOY_BUTTON_X, "y": JOY_BUTTON_Y,
 	"start": JOY_BUTTON_START, "back": JOY_BUTTON_BACK,
 	"up": JOY_BUTTON_DPAD_UP, "down": JOY_BUTTON_DPAD_DOWN,
 	"left": JOY_BUTTON_DPAD_LEFT, "right": JOY_BUTTON_DPAD_RIGHT,
 }
+
+func tap_key(keycode: int) -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	ev.physical_keycode = keycode
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	await get_tree().create_timer(0.1, true, false, true).timeout
+	var up := ev.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
+
+func tap(what: String) -> void:
+	if what.begins_with("joy:"):
+		tap_joy(JOY_BUTTONS[what.substr(4)])
+	elif what.begins_with("key:"):
+		tap_key(OS.find_keycode_from_string(what.substr(4)))
 
 # Press, hold for a few frames (so is_action_just_pressed sees it), release.
 func tap_joy(button: int) -> void:
@@ -52,6 +72,9 @@ func _ready() -> void:
 		var r = p[1].split("-")
 		inputs.append([p[0], float(r[0]), float(r[1]), false])
 	flow = Array(OS.get_environment("SSRC_TEST_FLOW").split(",", false))
+	for w in OS.get_environment("SSRC_TEST_TAPS").split(",", false):
+		var p = w.split("@")
+		taps.append([p[0], float(p[1])])
 
 func shot(tag: String) -> void:
 	var img := get_viewport().get_texture().get_image()
@@ -68,6 +91,7 @@ func _process(delta: float) -> void:
 		flow_t += real_dt
 		if game.get_session() != null:
 			t_drive = 0.0
+			phys0 = Engine.get_physics_frames()
 			print("[test] driving started at ", t_total)
 		elif flow.size() > 0 and flow_t > 2.5:
 			var step: String = flow.pop_front()
@@ -77,8 +101,8 @@ func _process(delta: float) -> void:
 				game.start_mode(int(step.substr(5)))
 			elif step.begins_with("shot:"):
 				shot(step.substr(5))
-			elif step.begins_with("joy:"):
-				tap_joy(JOY_BUTTONS[step.substr(4)])
+			elif step.begins_with("joy:") or step.begins_with("key:"):
+				tap(step)
 			else:
 				var ev := InputEventMouseButton.new()
 				ev.button_index = MOUSE_BUTTON_LEFT
@@ -110,8 +134,18 @@ func _process(delta: float) -> void:
 		elif not on and i[3]:
 			Input.action_release(i[0])
 		i[3] = on
+	while taps.size() > 0 and t_drive >= taps[0][1]:
+		var t = taps.pop_front()
+		print("[test] tap ", t[0], " at ", t_drive, " session=", game.get_session() != null, " paused=", get_tree().paused)
+		tap(t[0])
 	while shots.size() > 0 and t_drive >= shots[0]:
 		shot("drive_%05.2f" % shots.pop_front())
 	if t_drive > quit_after:
+		# Game speed check: 1.00x is 60 logic updates and 2.25 simulated seconds per real second.
+		var ticks: float = (Engine.get_physics_frames() - phys0) / t_drive
+		var speed: float = Engine.time_scale / 2.25
+		var substeps: float = Engine.physics_ticks_per_second / (60.0 * speed)
+		print("[test] speed %.2fx: %.1f logic updates/s, %.3f sim s per real s (%.1f physics ticks/s, %d substeps)" % [
+			speed, ticks / substeps, ticks / Engine.physics_ticks_per_second * Engine.time_scale, ticks, substeps])
 		print("[test] done")
 		get_tree().quit(0)

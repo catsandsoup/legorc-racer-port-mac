@@ -3,3 +3,6 @@
 # Add the player's files with:
 #   python3 scripts/release-guard.py --print-hash ~/Downloads/game.dcr >> scripts/release-guard.sha256
 #   python3 scripts/release-guard.py --print-hash ~/Downloads/GUILibrary.cct >> scripts/release-guard.sha256
+0fb6ce24e40c712400a2f1b7015220aba0165dbab9df4e910f144cddf31993af game.dcr
+7d1efa3a76666c814b0dfd326ffdac49571bb468f157744e673f1e8c5e14f855 GUILibrary.cct
+9be63c59de40bc8b781c984a7ac6e3211797f2eb9fc84038b7d247cacb3f7736 SupersonicRC.exe (Shockwave projector)
