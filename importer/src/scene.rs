@@ -38,6 +38,10 @@ pub struct ModelLightmap {
 pub struct SceneOptions<'a> {
     pub lightmaps: &'a HashMap<String, ModelLightmap>,
     pub texture_dir_name: String,
+    /// Whether V must be flipped for top-down images. The playfield needs it,
+    /// the separately exported car does not (checked against the original
+    /// game's renders).
+    pub flip_v: bool,
 }
 
 pub struct SceneReport {
@@ -47,8 +51,12 @@ pub struct SceneReport {
     pub lightmap_mismatches: Vec<String>,
 }
 
-fn flip_v(uv: &[f32; 2]) -> [f32; 2] {
-    [uv[0], 1.0 - uv[1]]
+fn flip_uv(uv: &[f32; 2], flip: bool) -> [f32; 2] {
+    if flip {
+        [uv[0], 1.0 - uv[1]]
+    } else {
+        *uv
+    }
 }
 
 fn shader_extras(sh: &W3dShader, scene: &W3dScene) -> serde_json::Value {
@@ -200,10 +208,10 @@ pub fn convert(scene: &W3dScene, out_dir: &Path, glb_name: &str, opts: &SceneOpt
                     if m.faces.is_empty() || m.positions.is_empty() {
                         continue;
                     }
-                    let uv0 = m.tex_coords.first().filter(|t| t.len() == m.positions.len()).map(|t| t.iter().map(flip_v).collect());
+                    let uv0 = m.tex_coords.first().filter(|t| t.len() == m.positions.len()).map(|t| t.iter().map(|uv| flip_uv(uv, opts.flip_v)).collect());
                     let uv1 = lm.and_then(|lm| lm.uvs.get(i)).and_then(|uvs| {
                         if uvs.len() == m.positions.len() {
-                            Some(uvs.iter().map(flip_v).collect::<Vec<_>>())
+                            Some(uvs.iter().map(|uv| flip_uv(uv, true)).collect::<Vec<_>>())
                         } else {
                             report.lightmap_mismatches.push(format!("{name} mesh {i}: {} uvs vs {} verts", uvs.len(), m.positions.len()));
                             None

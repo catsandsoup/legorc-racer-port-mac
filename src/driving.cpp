@@ -225,7 +225,8 @@ void Hud::set_message(const String &text) {
 		c->queue_free();
 	}
 	PackedStringArray lines = text.split("\r");
-	const int sizes[] = { 24, 18, 12 };
+	// textmessagemanager sizes 24/18/12 pt, as they appear on the 640x480 stage.
+	const int sizes[] = { 19, 14, 10 };
 	for (int i = 0; i < lines.size(); i++) {
 		Label *l = memnew(Label);
 		l->add_theme_font_override("font", font_bold_italic);
@@ -317,7 +318,11 @@ void ChaseCamera::update() {
 	if (dist > 0.001) {
 		RayHit hit = session->raycast(target, to_cam / dist, dist, false);
 		if (hit.hit && hit.position.distance_to(target) < dist) {
-			position = hit.position;
+			// Original: camera = hit point. Pull it 3 units toward the car so
+			// the near plane does not slice through the wall it touches.
+			Vector3 back = (target - hit.position);
+			real_t bl = back.length();
+			position = hit.position + (bl > 3.0 ? back / bl * 3.0 : back * 0.5);
 		}
 	}
 	Vector3 up = d2g_dir(Vector3(0, 0.01, 1)).normalized();

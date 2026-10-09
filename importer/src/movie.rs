@@ -169,7 +169,8 @@ fn convert_all(player: &vm_rust::player::DirPlayer, out: &Path, verbose: bool) -
                         other => sanitize(other),
                     };
                     let lm = if file == "world" { &lightmaps } else { &no_lightmaps };
-                    let opts = SceneOptions { lightmaps: lm, texture_dir_name: format!("{file}_textures") };
+                    let flip_v = file != "car";
+                    let opts = SceneOptions { lightmaps: lm, texture_dir_name: format!("{file}_textures"), flip_v };
                     let rep = scene::convert(sc, &out.join("scenes"), &format!("{file}.glb"), &opts)?;
                     for mm in &rep.lightmap_mismatches {
                         eprintln!("warning: lightmap uv mismatch: {mm}");
