@@ -80,6 +80,13 @@ private:
 		bool hover = false, pressed = false;
 	};
 	std::vector<Button4> buttons;
+	int last_picked = -1; // mode chosen last on the level select
+	int select_focus = -1; // level select button highlighted by keyboard/controller
+	bool pointer_mode = true; // the mouse, not the focus, decides the highlight
+	bool last_input_joy = false;
+	int highest_unlocked() const;
+	void navigate_select();
+	Control *panel_first_focus = nullptr;
 
 	// Fades (fadein / fadeout scripts: 1000 ms at blend +-1 per 10 ms).
 	real_t fade_alpha = 0, fade_dir = 0;
@@ -101,6 +108,8 @@ private:
 	void import_from(const String &path);
 	void on_file_dialog(bool status, const PackedStringArray &selected, int filter_index);
 	String importer_path() const;
+	void keep_originals(const String &dcr);
+	void reimport();
 
 	// Settings UI.
 	struct Choice {

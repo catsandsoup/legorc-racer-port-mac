@@ -23,12 +23,12 @@ Facts to plan with:
 | Goal | Notes |
 |---|---|
 | First green macOS CI build, then play the downloaded app on a Mac | Never run on macOS yet. Check Metal, the menu bar, MetalFX, the DualSense, first-run import from Downloads, and the Gatekeeper prompt |
-| Release guard | Script plus CI step that fails if a commit or built app contains game-derived bytes: file types (`.dcr .cct .w3d .hke .glb`, converted PNG/MP3) and known hashes of `game.dcr`/`GUILibrary.cct` |
-| Keep a copy of the player's original files | Copy `game.dcr` + `GUILibrary.cct` into `Application Support/Supersonic RC/original/` on import; re-import from there |
+| ~~Release guard~~ (done in session 2; hashes still to add) | Script plus CI step that fails if a commit or built app contains game-derived bytes: file types (`.dcr .cct .w3d .hke .glb`, converted PNG/MP3) and known hashes of `game.dcr`/`GUILibrary.cct` |
+| ~~Keep a copy of the player's original files~~ (done in session 2) | Copy `game.dcr` + `GUILibrary.cct` into `Application Support/Supersonic RC/original/` on import; re-import from there |
 | Verify the prize modes against the original | Scavenger Hunt and Supersonic Challenge haven't been compared with the Wine reference (prize textures, UV flip for `prize.glb`) |
 | Car rear fin textures | A few fin UVs differ from the original (see the HANDOFF screenshots). Check the CLOD texture-coordinate decode for those meshes |
 | Pause menu | The original has none (Esc quits the race). Add one only as an opt-in hook that opens the same settings model |
-| Controller-driven menus | Level select and settings need full gamepad focus navigation and button glyphs |
+| Controller-driven menus | Focus navigation done in session 2 (level select, settings panel, Start opens settings). Still to do: button glyphs, proof on the real menus |
 
 ## Level 1: hooks on systems that already exist (days each)
 

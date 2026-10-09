@@ -163,6 +163,8 @@ public:
 	void setup(SupersonicGame *game, ModeId mode);
 	void first_frame();
 	void request_exit(); // ESC
+	// Ignore Back until it has been released (it was held to close the settings panel).
+	void disarm_back() { back_armed = false; }
 	void finish(); // gameTypeManager.destroy -> back to level select
 
 	const Tuning &tuning() const { return tune; }
@@ -208,6 +210,7 @@ private:
 	real_t sim_seconds = 0;
 	bool running = false;
 	bool finished = false;
+	bool back_armed = false;
 	int tick_counter = 0;
 	int logic_ticks = 0;
 	Node3D *arrow = nullptr;

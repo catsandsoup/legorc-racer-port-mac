@@ -1129,10 +1129,12 @@ void DrivingSession::logic_tick() {
 	c->after_physics_contacts();
 
 	Input *inp = Input::get_singleton();
-	if (inp->is_action_pressed("back") && !finished) {
+	bool back = inp->is_action_pressed("back");
+	if (back && back_armed && !finished) {
 		request_exit();
 		return;
 	}
+	back_armed = !back;
 	DriveInput in;
 	in.up = inp->is_action_pressed("accelerate");
 	in.down = inp->is_action_pressed("brake");

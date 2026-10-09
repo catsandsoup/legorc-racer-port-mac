@@ -1,6 +1,8 @@
 # Automated smoke test / screenshot driver. Inactive unless SSRC_TEST is set.
 #   SSRC_TEST=1                       enable
 #   SSRC_TEST_FLOW=title,select,help,mode:0   screens to click through (or mode:N to jump)
+#                                     joy:<button> taps a controller button: a, b, x, y, start,
+#                                     back, up, down, left, right (D-pad)
 #   SSRC_TEST_INPUT=accelerate:1-6,steer_left:3-4   action windows (seconds after driving starts)
 #   SSRC_TEST_SHOTS=0.5,2,5           screenshot times (seconds after driving starts; t<0 = menus)
 #   SSRC_TEST_OUT=/path/prefix        screenshot path prefix
@@ -17,6 +19,23 @@ var out := "/tmp/ssrc"
 var game: Node
 var flow: Array = []
 var flow_t := 0.0
+const JOY_BUTTONS := {
+	"a": JOY_BUTTON_A, "b": JOY_BUTTON_B, "x": JOY_BUTTON_X, "y": JOY_BUTTON_Y,
+	"start": JOY_BUTTON_START, "back": JOY_BUTTON_BACK,
+	"up": JOY_BUTTON_DPAD_UP, "down": JOY_BUTTON_DPAD_DOWN,
+	"left": JOY_BUTTON_DPAD_LEFT, "right": JOY_BUTTON_DPAD_RIGHT,
+}
+
+# Press, hold for a few frames (so is_action_just_pressed sees it), release.
+func tap_joy(button: int) -> void:
+	var ev := InputEventJoypadButton.new()
+	ev.button_index = button
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	await get_tree().create_timer(0.1, true, false, true).timeout
+	var up := ev.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
 
 func _ready() -> void:
 	enabled = OS.get_environment("SSRC_TEST") != ""
@@ -58,6 +77,8 @@ func _process(delta: float) -> void:
 				game.start_mode(int(step.substr(5)))
 			elif step.begins_with("shot:"):
 				shot(step.substr(5))
+			elif step.begins_with("joy:"):
+				tap_joy(JOY_BUTTONS[step.substr(4)])
 			else:
 				var ev := InputEventMouseButton.new()
 				ev.button_index = MOUSE_BUTTON_LEFT

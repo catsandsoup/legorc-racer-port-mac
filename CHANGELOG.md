@@ -2,6 +2,25 @@
 
 Project owner: catsandsoup.
 
+## Unreleased: session 2
+
+- Release guard (`scripts/release-guard.py`): fails a commit, a push (CI
+  workflow `release-guard.yml`) or a built app (`package-macos.sh`) that
+  contains original or converted game data, screenshots, known original
+  hashes or local paths. Optional pre-commit hook in `.githooks/`.
+- The player's `game.dcr` and `GUILibrary.cct` are kept in
+  `<user data>/original/` after import. Auto-import looks there first.
+  New: **Game → Re-import Saved Game Files**, **Game → Show Saved Game
+  Files**, and **Re-import** in the F1 panel.
+- Controller menus: the level select has a highlight that the D-pad, left
+  stick or arrow keys move over the unlocked modes. A or Enter picks the
+  highlighted mode, and B goes back from the level select and help.
+- Start opens the settings panel (pausing a race) instead of leaving the
+  race. Back/View and Esc still leave the race. A, B and the D-pad work
+  in the panel: Godot's `ui_accept`/`ui_cancel` had no joypad buttons.
+- Closing the panel with Esc during a race no longer also leaves the race.
+- Test driver: `joy:<button>` flow steps.
+
 ## Unreleased: 0.1.0 (first port)
 
 ### Converter (`ssrc-import`)

@@ -60,6 +60,15 @@ String Assets::mods_root() {
 	return user_root().path_join("mods");
 }
 
+String Assets::originals_root() {
+	return user_root().path_join("original");
+}
+
+bool Assets::has_originals() {
+	return FileAccess::file_exists(originals_root().path_join("game.dcr")) &&
+			FileAccess::file_exists(originals_root().path_join("GUILibrary.cct"));
+}
+
 bool Assets::has_converted_data() {
 	return FileAccess::file_exists(data_root().path_join("manifest.json")) &&
 			FileAccess::file_exists(data_root().path_join("scenes/world.glb"));

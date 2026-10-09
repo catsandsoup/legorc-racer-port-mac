@@ -137,7 +137,8 @@ static void add_joy_axis(const StringName &action, JoyAxis a, real_t dir) {
 
 void SupersonicGame::build_input_map() {
 	InputMap *im = InputMap::get_singleton();
-	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "back", "steer_left_analog", "steer_right_analog", "menu_accept", "menu_up", "menu_down" };
+	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "back", "pause", "steer_left_analog", "steer_right_analog",
+		"menu_accept", "menu_up", "menu_down", "menu_left", "menu_right" };
 	for (const char *a : actions) {
 		if (!im->has_action(a)) {
 			im->add_action(a, 0.3);
@@ -156,9 +157,11 @@ void SupersonicGame::build_input_map() {
 	add_key("handbrake", KEY_SPACE);
 	add_joy_button("handbrake", JOY_BUTTON_B);
 	add_joy_button("handbrake", JOY_BUTTON_RIGHT_SHOULDER);
+	// Esc and the controller's Back/View button leave the race, as Esc did in
+	// the original. Start opens the settings panel (and pauses a race).
 	add_key("back", KEY_ESCAPE);
-	add_joy_button("back", JOY_BUTTON_START);
 	add_joy_button("back", JOY_BUTTON_BACK);
+	add_joy_button("pause", JOY_BUTTON_START);
 	add_joy_axis("steer_left_analog", JOY_AXIS_LEFT_X, -1);
 	add_joy_axis("steer_right_analog", JOY_AXIS_LEFT_X, 1);
 	add_key("menu_accept", KEY_ENTER);
@@ -167,8 +170,23 @@ void SupersonicGame::build_input_map() {
 	add_joy_button("menu_accept", JOY_BUTTON_A);
 	add_key("menu_up", KEY_UP);
 	add_joy_button("menu_up", JOY_BUTTON_DPAD_UP);
+	add_joy_axis("menu_up", JOY_AXIS_LEFT_Y, -1);
 	add_key("menu_down", KEY_DOWN);
 	add_joy_button("menu_down", JOY_BUTTON_DPAD_DOWN);
+	add_joy_axis("menu_down", JOY_AXIS_LEFT_Y, 1);
+	add_key("menu_left", KEY_LEFT);
+	add_joy_button("menu_left", JOY_BUTTON_DPAD_LEFT);
+	add_joy_axis("menu_left", JOY_AXIS_LEFT_X, -1);
+	add_key("menu_right", KEY_RIGHT);
+	add_joy_button("menu_right", JOY_BUTTON_DPAD_RIGHT);
+	add_joy_axis("menu_right", JOY_AXIS_LEFT_X, 1);
+	for (const char *a : { "menu_up", "menu_down", "menu_left", "menu_right" }) {
+		im->action_set_deadzone(a, 0.5);
+	}
+	// Godot's ui_accept and ui_cancel have no joypad buttons; the settings
+	// panel's controls need them.
+	add_joy_button("ui_accept", JOY_BUTTON_A);
+	add_joy_button("ui_cancel", JOY_BUTTON_B);
 }
 
 void SupersonicGame::_ready() {
@@ -359,6 +377,7 @@ void SupersonicGame::_process(double) {
 	if (prefs.show_fps) {
 		fps_label->set_text(String::num(Engine::get_singleton()->get_frames_per_second(), 0) + " fps");
 	}
+	navigate_select();
 	update_buttons();
 }
 
@@ -413,6 +432,13 @@ void SupersonicGame::go_select_level() {
 		b.rect = add_image(b.base);
 		buttons.push_back(b);
 	}
+	// A controller player sees a highlight straight away, on the mode they
+	// last picked; a mouse player sees the original screen.
+	pointer_mode = !last_input_joy;
+	select_focus = -1;
+	if (last_input_joy) {
+		select_focus = last_picked >= 0 && is_unlocked(ModeId(last_picked)) ? last_picked : highest_unlocked();
+	}
 	fade_in();
 	sound->play(8, PlayItem{ "SSRMusicSplashScreen", 0 });
 }
@@ -420,6 +446,7 @@ void SupersonicGame::go_select_level() {
 void SupersonicGame::go_help(int mode) {
 	screen = Screen::HELP;
 	pending_mode = mode;
+	last_picked = mode;
 	clear_stage();
 	add_image("Help-v5");
 	fade_in();
@@ -432,7 +459,8 @@ void SupersonicGame::update_buttons() {
 	Vector2 m = stage->get_local_mouse_position();
 	for (Button4 &b : buttons) {
 		bool enabled = is_unlocked(ModeId(b.mode));
-		String state = enabled ? (b.pressed && b.hover ? "Down" : b.hover ? "Over" : "") : "Gray";
+		bool lit = pointer_mode ? b.hover : b.mode == select_focus;
+		String state = enabled ? (b.pressed && b.hover ? "Down" : lit ? "Over" : "") : "Gray";
 		String member = b.base + state;
 		Ref<Texture2D> tex = Assets::member_texture(member);
 		if (tex.is_null()) {
@@ -446,6 +474,47 @@ void SupersonicGame::update_buttons() {
 		b.rect->set_position(Vector2(320, 240) - Assets::member_reg(member));
 		Rect2 r(Vector2(320, 240) - Assets::member_reg(b.base), Assets::member_texture(b.base).is_valid() ? Assets::member_texture(b.base)->get_size() : Vector2());
 		b.hover = enabled && !input_locked && r.has_point(m);
+	}
+}
+
+int SupersonicGame::highest_unlocked() const {
+	for (int i = int(ModeId::COUNT) - 1; i > 0; i--) {
+		if (is_unlocked(ModeId(i))) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+// Arrow keys, D-pad or left stick on the level select: step through the
+// unlocked modes in order, wrapping around.
+void SupersonicGame::navigate_select() {
+	if (screen != Screen::SELECT || input_locked || fade_dir != 0 || (settings_panel && settings_panel->is_visible())) {
+		return;
+	}
+	Input *in = Input::get_singleton();
+	int step = (in->is_action_just_pressed("menu_left") || in->is_action_just_pressed("menu_up")) ? -1
+			: (in->is_action_just_pressed("menu_right") || in->is_action_just_pressed("menu_down")) ? 1
+																									: 0;
+	if (step == 0) {
+		return;
+	}
+	if (pointer_mode || select_focus < 0) {
+		int hovered = -1;
+		for (const Button4 &b : buttons) {
+			hovered = b.hover ? b.mode : hovered;
+		}
+		pointer_mode = false;
+		select_focus = hovered >= 0 ? hovered : highest_unlocked();
+		return;
+	}
+	int n = int(ModeId::COUNT);
+	for (int k = 1; k < n; k++) {
+		int m = ((select_focus + step * k) % n + n) % n;
+		if (is_unlocked(ModeId(m))) {
+			select_focus = m;
+			return;
+		}
 	}
 }
 
@@ -490,6 +559,21 @@ void SupersonicGame::session_finished() {
 }
 
 void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
+	if (Object::cast_to<InputEventJoypadButton>(event.ptr()) || Object::cast_to<InputEventJoypadMotion>(event.ptr())) {
+		Ref<InputEventJoypadMotion> jm = event;
+		if (jm.is_null() || Math::abs(jm->get_axis_value()) > 0.5) {
+			last_input_joy = true;
+		}
+	} else if (Object::cast_to<InputEventMouseMotion>(event.ptr()) || Object::cast_to<InputEventKey>(event.ptr())) {
+		last_input_joy = false;
+		if (Object::cast_to<InputEventMouseMotion>(event.ptr())) {
+			pointer_mode = true;
+		}
+	}
+	if (event->is_action_pressed("pause")) {
+		toggle_settings_panel();
+		return;
+	}
 	Ref<InputEventKey> key = event;
 	if (key.is_valid() && key->is_pressed() && !key->is_echo()) {
 		if (key->get_keycode() == KEY_F1 || (key->get_keycode() == KEY_COMMA && key->is_command_or_control_pressed())) {
@@ -508,11 +592,12 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 		}
 	}
 	if (settings_panel && settings_panel->is_visible()) {
-		if (event->is_action_pressed("back")) {
+		if (event->is_action_pressed("back") || event->is_action_pressed("ui_cancel")) {
 			toggle_settings_panel();
 		}
 		return;
 	}
+	bool cancel = event->is_action_pressed("back") || event->is_action_pressed("ui_cancel");
 	if (input_locked || fade_dir != 0) {
 		return;
 	}
@@ -544,20 +629,20 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 				}
 			}
 			if (accept) {
-				// Keyboard/gamepad: highest unlocked mode, or the hovered one.
-				for (int i = 4; i >= 0; i--) {
-					if (is_unlocked(ModeId(i))) {
-						chosen = i;
-						break;
-					}
-				}
-				for (Button4 &b : buttons) {
-					if (b.hover) {
-						chosen = b.mode;
+				// Keyboard/gamepad: the highlighted mode, the hovered one, or
+				// the highest unlocked mode.
+				chosen = highest_unlocked();
+				if (!pointer_mode && select_focus >= 0) {
+					chosen = select_focus;
+				} else {
+					for (Button4 &b : buttons) {
+						if (b.hover) {
+							chosen = b.mode;
+						}
 					}
 				}
 			}
-			if (event->is_action_pressed("back")) {
+			if (cancel) {
 				fade_out([this]() { go_title(); });
 			}
 			if (chosen >= 0 && is_unlocked(ModeId(chosen))) {
@@ -571,7 +656,7 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 				sound->fade_out(8, 500);
 				int m = pending_mode;
 				fade_out([this, m]() { start_mode(m); });
-			} else if (event->is_action_pressed("back")) {
+			} else if (cancel) {
 				fade_out([this]() { go_select_level(); });
 			}
 			break;
@@ -654,6 +739,7 @@ static String find_game_in(const String &dir, int depth) {
 void SupersonicGame::try_auto_import() {
 	OS *os = OS::get_singleton();
 	PackedStringArray dirs;
+	dirs.push_back(Assets::originals_root());
 	String exe_dir = os->get_executable_path().get_base_dir();
 	dirs.push_back(exe_dir);
 	// Next to the .app bundle (…/Supersonic RC.app/Contents/MacOS -> …).
@@ -725,8 +811,61 @@ void SupersonicGame::import_from(const String &path) {
 		show_import("Conversion failed (code " + String::num_int64(code) + ").\n" + log + "\n\nClick to try again.");
 		return;
 	}
+	keep_originals(dcr);
+	DirAccess::remove_absolute(Assets::user_root().path_join("import_tmp")); // only if now empty
 	Assets::clear_cache();
 	go_title();
+}
+
+// Copies game.dcr and the casts next to it (GUILibrary.cct) into
+// <user data>/original/ after a successful conversion, so a later
+// re-import doesn't need the zip. Zip imports are moved out of import_tmp.
+void SupersonicGame::keep_originals(const String &dcr) {
+	String src_dir = dcr.get_base_dir();
+	String dst_dir = Assets::originals_root();
+	if (src_dir.simplify_path() == dst_dir.simplify_path()) {
+		return;
+	}
+	bool from_tmp = src_dir.simplify_path() == Assets::user_root().path_join("import_tmp").simplify_path();
+	DirAccess::make_dir_recursive_absolute(dst_dir);
+	for (const String &f : DirAccess::get_files_at(src_dir)) {
+		String lf = f.to_lower();
+		if (lf != "game.dcr" && !lf.ends_with(".cct")) {
+			continue;
+		}
+		// Keep the names the converter looks for, whatever their case on disk.
+		String name = lf == "game.dcr" ? String("game.dcr") : lf == "guilibrary.cct" ? String("GUILibrary.cct") : f;
+		String from = src_dir.path_join(f);
+		String to = dst_dir.path_join(name);
+		Error err = from_tmp ? DirAccess::rename_absolute(from, to) : DirAccess::copy_absolute(from, to);
+		if (err != OK && from_tmp) {
+			err = DirAccess::copy_absolute(from, to);
+			DirAccess::remove_absolute(from);
+		}
+		UtilityFunctions::print("[ssrc] kept original ", name, err == OK ? String(" in ") + dst_dir : String(" - copy failed"));
+	}
+}
+
+void SupersonicGame::reimport() {
+	if (settings_panel && settings_panel->is_visible()) {
+		toggle_settings_panel();
+	}
+	if (session) {
+		session->queue_free();
+		session = nullptr;
+		sound->stop_all();
+		emit_signal("session_ended");
+	}
+	get_tree()->set_pause(false);
+	fade_dir = 0;
+	fade_done = nullptr;
+	input_locked = false;
+	if (Assets::has_originals()) {
+		show_import("Converting your saved game files again...");
+		call_deferred("import_from", Assets::originals_root().path_join("game.dcr"));
+	} else {
+		show_import("No saved copy of your game files yet.\n\nClick to locate game.dcr, its folder, or the zip.");
+	}
 }
 
 // ============================================================ mods
@@ -879,6 +1018,11 @@ void SupersonicGame::run_action(const String &action) {
 		reload_mods();
 	} else if (action == "open_data") {
 		OS::get_singleton()->shell_show_in_file_manager(Assets::data_root());
+	} else if (action == "reimport_saved") {
+		reimport();
+	} else if (action == "open_originals") {
+		DirAccess::make_dir_recursive_absolute(Assets::originals_root());
+		OS::get_singleton()->shell_show_in_file_manager(Assets::originals_root());
 	} else if (action == "reimport") {
 		DisplayServer::get_singleton()->file_dialog_show("Locate your Supersonic RC files", OS::get_singleton()->get_system_dir(OS::SYSTEM_DIR_DOWNLOADS), "", false,
 				DisplayServer::FILE_DIALOG_MODE_OPEN_ANY, PackedStringArray({ "*.dcr, *.zip ; Supersonic RC game files" }), callable_mp(this, &SupersonicGame::on_file_dialog));
@@ -915,6 +1059,8 @@ void SupersonicGame::build_native_menu() {
 	action(game_menu, "Reload Mods", "reload_mods");
 	nm->add_separator(game_menu);
 	action(game_menu, "Re-import Game Files...", "reimport");
+	action(game_menu, "Re-import Saved Game Files", "reimport_saved");
+	action(game_menu, "Show Saved Game Files", "open_originals");
 	action(game_menu, "Show Converted Data", "open_data");
 	nm->add_submenu_item(main, "Game", game_menu);
 
@@ -986,6 +1132,7 @@ void SupersonicGame::on_option_selected(int idx, Object *game, const String &key
 void SupersonicGame::build_settings_panel() {
 	settings_panel = memnew(PanelContainer);
 	settings_panel->set_process_mode(PROCESS_MODE_ALWAYS);
+	panel_first_focus = nullptr;
 	Ref<StyleBoxFlat> sb;
 	sb.instantiate();
 	sb->set_bg_color(Color(0.08, 0.09, 0.12, 0.94));
@@ -994,12 +1141,13 @@ void SupersonicGame::build_settings_panel() {
 	settings_panel->add_theme_stylebox_override("panel", sb);
 	ScrollContainer *scroll = memnew(ScrollContainer);
 	scroll->set_custom_minimum_size(Vector2(560, 420));
+	scroll->set_follow_focus(true);
 	settings_panel->add_child(scroll);
 	VBoxContainer *vb = memnew(VBoxContainer);
 	vb->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	scroll->add_child(vb);
 	Label *title = memnew(Label);
-	title->set_text("Settings  (F1 or Esc to close)");
+	title->set_text("Settings  (F1, Esc, Start or B to close)");
 	title->add_theme_font_size_override("font_size", 18);
 	vb->add_child(title);
 	String last_section;
@@ -1032,10 +1180,13 @@ void SupersonicGame::build_settings_panel() {
 		}
 		ob->connect("item_selected", callable_mp_static(&SupersonicGame::on_option_selected).bind(this, o.key, values));
 		row->add_child(ob);
+		if (!panel_first_focus) {
+			panel_first_focus = ob;
+		}
 		vb->add_child(row);
 	}
 	HBoxContainer *actions = memnew(HBoxContainer);
-	const char *acts[][2] = { { "Main Menu", "main_menu" }, { "Unlock All", "unlock_all" }, { "Mods Folder", "open_mods" }, { "Quit", "quit" } };
+	const char *acts[][2] = { { "Main Menu", "main_menu" }, { "Unlock All", "unlock_all" }, { "Mods Folder", "open_mods" }, { "Re-import", "reimport_saved" }, { "Quit", "quit" } };
 	for (auto &a : acts) {
 		Button *b = memnew(Button);
 		b->set_text(a[0]);
@@ -1061,6 +1212,12 @@ void SupersonicGame::toggle_settings_panel() {
 	settings_panel->set_visible(show);
 	settings_panel->reset_size();
 	layout_stage();
+	if (show && panel_first_focus) {
+		panel_first_focus->call_deferred("grab_focus");
+	}
+	if (session) {
+		session->disarm_back();
+	}
 	get_tree()->set_pause(show && screen == Screen::DRIVING);
 }
 

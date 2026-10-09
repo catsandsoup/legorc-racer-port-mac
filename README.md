@@ -40,7 +40,12 @@ xattr -dr com.apple.quarantine "/Applications/Supersonic RC.app"
 ```
 
 If the files aren't found automatically, the app asks you to pick them.
-Use **Game → Re-import Game Files…** to convert them again.
+After a successful import the app keeps a copy of `game.dcr` and
+`GUILibrary.cct` in `~/Library/Application Support/Supersonic RC/original/`,
+so you can delete the zip. **Game → Re-import Saved Game Files** (or
+**Re-import** in the F1 panel) converts that copy again, for example after
+an update; **Game → Re-import Game Files…** picks other files, and
+**Game → Show Saved Game Files** opens the folder.
 
 ### Controls
 
@@ -50,10 +55,16 @@ Use **Game → Re-import Game Files…** to convert them again.
 | Brake / reverse | ↓ | Left trigger / X |
 | Steer | ← → | Left stick / D-pad |
 | Handbrake (power slide) | Space | B / Right shoulder |
-| Leave the race | Esc | Start |
+| Leave the race | Esc | Back / View / Share |
 | Sound on/off | S | |
-| Settings | F1 or ⌘, | |
+| Settings (pauses a race) | F1 or ⌘, | Start / Menu / Options |
 | Fullscreen | ⌃⌘F or F11 | |
+
+Menus work with the keyboard or a controller: on the level select, arrow
+keys, the D-pad or the left stick move the highlight over the unlocked
+modes, Enter or A picks one, and Esc or B goes back. In the settings panel
+the D-pad moves between settings, A opens a setting's list and picks a
+value, and B or Start closes the panel.
 
 Hold **Ctrl** while the game starts to unlock all modes, as in the original,
 or use **Game → Unlock All Modes**. Unlocks are saved.

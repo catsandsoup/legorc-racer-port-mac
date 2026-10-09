@@ -23,6 +23,10 @@ public:
 	static String user_root();
 	static String data_root();
 	static String mods_root();
+	// Copies of the player's game.dcr and .cct files, kept on import so the
+	// game can be re-converted (after a converter update) without the zip.
+	static String originals_root();
+	static bool has_originals();
 	static bool has_converted_data();
 
 	static void scan_mods();
