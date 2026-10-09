@@ -102,8 +102,23 @@ git clone https://github.com/catsandsoup/legorc-racer-port-mac
 cd legorc-racer-port-mac
 git submodule update --init   # not --recursive: DirPlayer's own submodules aren't needed
 cargo build --release --manifest-path importer/Cargo.toml
-scons platform=macos arch=arm64 target=template_release
+scons platform=macos arch=arm64 target=template_debug     # used by the Godot editor
+scons platform=macos arch=arm64 target=template_release   # shipped in the app
 godot --headless --path game --import
+```
+
+To play straight from source (fastest while developing), unzip the game, run the
+converter once on its `game.dcr` and point the game at the output:
+
+```sh
+importer/target/release/ssrc-import /path/to/unzipped/game.dcr ~/ssrc-data
+SSRC_DATA=~/ssrc-data godot --path game
+```
+
+To make the double-click app, install Godot's 4.7.2 export templates
+(Editor → Manage Export Templates) and run:
+
+```sh
 godot --headless --path game --export-release macOS "$PWD/build/macos/Supersonic RC.zip"
 scripts/package-macos.sh "build/macos/Supersonic RC.zip"
 ```
