@@ -2,7 +2,23 @@
 
 Project owner: catsandsoup.
 
-## Unreleased: 0.1.0 (first port)
+## Unreleased
+
+### Fixed (from the owner's first Mac playtest)
+- Floors, walls, ramps, stairs and shelf tops are solid. The Havok shapes
+  are two-sided; one-sided shapes let the car through them.
+- The dinosaur no longer has the blotchy black lightmap. As in the
+  original, its shader clone loses the lightmap and gets a dark red tint.
+- ⌘Q quits even in full screen, where the menu bar is hidden.
+
+### Added
+- `scripts/test-collision.sh`: a regression test that the collision world
+  is solid.
+- Docs: `PLAYER_JOURNEY.md`, `DESIGN_PRINCIPLES.md`, rewritten
+  `PRODUCT_RULES.md` (with the Wine baseline), and the UX and style
+  critics.
+
+## 0.1.0 (first port)
 
 ### Converter (`ssrc-import`)
 - Reads the player's `game.dcr` and `GUILibrary.cct` with DirPlayer's

@@ -39,28 +39,36 @@ Gatekeeper flow and controllers on macOS are unproven.
 
 From the owner's first Mac playtest (2026-10-10), highest impact first:
 
-1. **The car falls through the stairs and through the ramp leading down to
-   the shelves.** Reproduced on Linux. Start the car at the top of the left
-   flight with a `tuning.json` mod (`start_x -669, start_y -3937,
-   start_z 350`) and accelerate. The car drops off the top landing and down
-   the 1.2 m steps, and ends up inside the staircase below the floor.
-   - The collision meshes all match their visual models exactly, and the
-     walkable faces point up, so nothing is missing or misplaced.
-   - Root cause not found yet. Compare the same route in the original under
-     Wine before fixing.
+1. **Fixed (2026-10-10): floors, walls, ramps, stairs and shelf tops weren't
+   solid.** The HKE triangles are wound the opposite way to Godot's front
+   faces, and some meshes mix both windings. With one-sided shapes, the car
+   body passed through anything it met from the visible side. Only the
+   wheel rays (two-sided) held it up. The Havok shapes are now two-sided.
+   - `scripts/test-collision.sh` (`SSRC_COLLISION_PROBE=1`) sweeps a
+     car-sized box at eight surfaces. Before the fix 6 of 8 failed; after
+     it, all pass.
+   - Still to do: compare the car's behaviour on each surface with the
+     original under Wine. Driving off the top of the stairs at full speed
+     now flies over them and lands on the lower floor, sometimes on its
+     roof. Whether the original does the same is unchecked.
 2. **After falling, the car reappeared stuck in the shelves.** The respawn
    copies the original (`pickupManager`: cast a ray down from z = 800 and
-   place the car 30 units above the first hit). Fixing item 1 removes most
-   of this. Check it against Wine.
-3. **The dinosaur's lower half is black.** Cause: `lightMapManager` clones
+   place the car 30 units above the first hit). It should be rare now that
+   the floors are solid. Check against Wine.
+3. **The dinosaur's lower half was black.** Cause: `lightMapManager` clones
    each lightmapped model's shaders as `<name>_Clone`. It then retunes
    `D_Clone`, the dinosaur's clone, to diffuse `#441111` with ambient 0, and
    removes its lightmap. The port wrongly assumed the retune only reached
-   models without a lightmap. A fix is in `src/materials.cpp`; it hasn't been
-   compared against Wine yet.
+   models without a lightmap. Fixed in `src/materials.cpp`: the blotchy
+   lightmap is gone. Its underside is still dark from the directional
+   lights, so compare it against Wine.
 4. **Controls don't work for a controller player.** Settings live only in
    the macOS menu bar and an F1 panel. The menus aren't controller-navigable,
    and there is no pause.
+   - In full screen the menu bar is hidden, so the owner couldn't quit or
+     change settings. ⌘Q now quits from anywhere, and ⌘⌃F or F11 toggles
+     full screen.
+   - The real fix is the pause menu and Settings milestone.
 5. The owner remembers the checkpoint arrow at the top of the screen. The
    Wine capture shows it at the bottom centre, as the port draws it.
    Re-check under Wine before changing anything.
@@ -122,6 +130,7 @@ with the test variables below.
 | `SSRC_TEST_QUIT` | Quit after N seconds of driving |
 | `SSRC_DEBUG_CAR=N` | Print the car's physics state for N ticks |
 | `SSRC_PICK="x,y;…"` | Print the model and shader under stage points at tick 200 |
+| `SSRC_COLLISION_PROBE=1` | Sweep a car-sized box at eight known surfaces, print PASS/FAIL, quit (used by `scripts/test-collision.sh`) |
 | `SSRC_LM_MODE` | Lightmap blend experiments (0 is correct; leftover from calibration) |
 
 For a fresh first-run test, set `HOME` to an empty folder that contains

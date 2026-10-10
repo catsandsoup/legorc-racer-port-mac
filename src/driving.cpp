@@ -4,6 +4,7 @@
 #include "materials.h"
 #include "sound.h"
 
+#include <godot_cpp/classes/box_shape3d.hpp>
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/concave_polygon_shape3d.hpp>
 #include <godot_cpp/classes/directional_light3d.hpp>
@@ -17,6 +18,8 @@
 #include <godot_cpp/classes/physics_direct_space_state3d.hpp>
 #include <godot_cpp/classes/physics_material.hpp>
 #include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
+#include <godot_cpp/classes/physics_shape_query_parameters3d.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/static_body3d.hpp>
 #include <godot_cpp/classes/theme_db.hpp>
@@ -1081,6 +1084,10 @@ void DrivingSession::build_world() {
 		}
 		Ref<ConcavePolygonShape3D> shape;
 		shape.instantiate();
+		// Two-sided: the HKE triangles are wound the opposite way to
+		// Godot's front faces (and some meshes mix both), so one-sided
+		// shapes let the car through floors, walls, ramps and stairs.
+		shape->set_backface_collision_enabled(true);
 		shape->set_faces(faces);
 		CollisionShape3D *cs = memnew(CollisionShape3D);
 		cs->set_name(String(b["name"]));
@@ -1161,6 +1168,10 @@ void DrivingSession::logic_tick() {
 	// actorList stepFrame
 	c->step_frame();
 	mode->step_frame();
+	static bool probe = OS::get_singleton()->get_environment("SSRC_COLLISION_PROBE") != "";
+	if (probe && logic_ticks == 2) {
+		run_collision_probe();
+	}
 	static String pick = OS::get_singleton()->get_environment("SSRC_PICK");
 	if (!pick.is_empty() && logic_ticks == 200) {
 		// Debug: which model/shader is under screen point x,y (640x480 space)?
@@ -1246,6 +1257,46 @@ void DrivingSession::_process(double) {
 		hud->update(dt_ms);
 		hud->layout();
 	}
+}
+
+
+// Test hook (SSRC_COLLISION_PROBE=1): sweep a car-sized box at known
+// surfaces of the Havok world and print PASS/FAIL for each, then quit.
+// Every surface must stop the box from the side the player meets it.
+void DrivingSession::run_collision_probe() {
+	struct Probe {
+		const char *name;
+		Vector3 from, motion; // Godot metres
+	};
+	const Probe probes[] = {
+		{ "lower floor from above", Vector3(0, 2, -100), Vector3(0, -4, 0) },
+		{ "upper floor from above", Vector3(96.3, 10, 144.7), Vector3(0, -4, 0) },
+		{ "outer wall from inside", Vector3(-120, 1, -100), Vector3(-40, 0, 0) },
+		{ "Big Ramp from above", Vector3(65, 30, -95), Vector3(0, -40, 0) },
+		{ "stairs step from above", Vector3(-17, 12, 70), Vector3(0, -20, 0) },
+		{ "shelf side", Vector3(75, 1, -22), Vector3(15, 0, 0) },
+		{ "shelf top from above", Vector3(88, 20, -22), Vector3(0, -10, 0) },
+		{ "dinosaur from above", Vector3(-38, 45, 117), Vector3(0, -40, 0) },
+	};
+	Ref<BoxShape3D> box;
+	box.instantiate();
+	box->set_size(Vector3(15, 10, 30) * WORLD_SCALE);
+	PhysicsDirectSpaceState3D *space = get_world_3d()->get_direct_space_state();
+	int failed = 0;
+	for (const Probe &p : probes) {
+		Ref<PhysicsShapeQueryParameters3D> q;
+		q.instantiate();
+		q->set_shape(box);
+		q->set_collision_mask(LAYER_WORLD);
+		q->set_transform(Transform3D(Basis(), p.from));
+		q->set_motion(p.motion);
+		PackedFloat32Array r = space->cast_motion(q);
+		bool hit = r.size() > 0 && r[0] < 1.0;
+		failed += hit ? 0 : 1;
+		UtilityFunctions::print("[probe] ", hit ? "PASS " : "FAIL ", p.name, " stopped at ", p.from + p.motion * (r.size() > 0 ? r[0] : 1.0));
+	}
+	UtilityFunctions::print("[probe] ", failed == 0 ? "ALL PASS" : String::num_int64(failed) + " FAILED");
+	get_tree()->quit(failed == 0 ? 0 : 1);
 }
 
 } // namespace ssrc

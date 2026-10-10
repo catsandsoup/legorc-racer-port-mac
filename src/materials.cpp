@@ -251,20 +251,25 @@ void apply_director_materials(Node *n, const String &tex_dir, const DirectorLigh
 			Ref<BaseMaterial3D> src3d = src;
 			p.double_sided = vis == 3 || (src3d.is_valid() && src3d->get_cull_mode() == BaseMaterial3D::CULL_DISABLED);
 			// lightMapManager.new: each lightmapped model gets CLONES of its
-			// shaders with the lightmap as texture layer 2 and
-			// useDiffuseWithTexture = 1. The three shaders it then retunes by
-			// name (column, Ex_Main_02, D_Clone) are the originals, so the
-			// retune only reaches models that were not lightmapped.
+			// shaders (mCloneShader names them "<name>_Clone") with the
+			// lightmap as texture layer 2 and useDiffuseWithTexture = 1. It
+			// then retunes three shaders by name. "column" and "Ex_Main_02"
+			// are originals, so that retune only reaches models that were not
+			// lightmapped. "D_Clone" is the dinosaur's (Dbody) lightmapped
+			// clone: it gets a dark red diffuse and loses its lightmap again.
+			String effective = lm_tex.is_valid() ? shader_name + "_Clone" : shader_name;
 			if (lm_tex.is_valid()) {
 				p.lightmap = lm_tex;
 				p.force_diffuse = true;
-			} else if (shader_name == "column" || shader_name == "Ex_Main_02") {
+			}
+			if (effective == "column" || effective == "Ex_Main_02") {
 				p.diffuse_override = Color::html("111133");
 				p.force_diffuse = true;
 				p.shader["ambient"] = Array({ 0, 0, 0 });
-			} else if (shader_name == "D_Clone") {
+			} else if (effective == "D_Clone") {
 				p.diffuse_override = Color::html("441111");
 				p.shader["ambient"] = Array({ 0, 0, 0 });
+				p.lightmap = Ref<Texture2D>();
 			}
 			mi->set_surface_override_material(s, make_material(p, lights));
 		}

@@ -216,6 +216,7 @@ private:
 	Transform3D prop_model_xform(const String &scene_rel, MeshInstance3D **mesh_out);
 
 	void build_world();
+	void run_collision_probe();
 	void load_lights();
 	void logic_tick();
 };

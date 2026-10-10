@@ -502,6 +502,12 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 			AudioServer::get_singleton()->set_bus_mute(0, muted);
 			return;
 		}
+		// The menu bar is hidden in full screen, so its shortcuts must
+		// still work from here.
+		if (key->get_keycode() == KEY_Q && key->is_command_or_control_pressed()) {
+			run_action("quit");
+			return;
+		}
 		if (key->get_keycode() == KEY_F11 || (key->get_keycode() == KEY_F && key->is_command_or_control_pressed() && key->is_ctrl_pressed())) {
 			set_option("window_mode", prefs.window_mode == 0 ? 1 : 0);
 			return;
