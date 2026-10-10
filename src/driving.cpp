@@ -839,8 +839,18 @@ SoundSystem *DrivingSession::sound() const {
 	return game->get_sound();
 }
 
+// The original's "the milliSeconds", but it stops while the game is paused
+// (the port's pause menu), so timers don't run down behind it.
 real_t DrivingSession::real_ms() const {
-	return Time::get_singleton()->get_ticks_usec() / 1000.0;
+	return clock_us / 1000.0;
+}
+
+void DrivingSession::advance_clock() {
+	uint64_t now = Time::get_singleton()->get_ticks_usec();
+	if (clock_last_us) {
+		clock_us += MIN(now - clock_last_us, uint64_t(100000));
+	}
+	clock_last_us = now;
 }
 
 void DrivingSession::unlock(ModeId id) {
@@ -1342,6 +1352,7 @@ void DrivingSession::_physics_process(double delta) {
 }
 
 void DrivingSession::_process(double) {
+	advance_clock();
 	static uint64_t last = 0;
 	uint64_t now = Time::get_singleton()->get_ticks_usec();
 	real_t dt_ms = last ? (now - last) / 1000.0 : 0;

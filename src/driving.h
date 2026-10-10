@@ -178,6 +178,7 @@ public:
 	Hud *get_hud() const { return hud.get(); }
 	real_t sim_time() const { return sim_seconds; }
 	real_t real_ms() const;
+	void advance_clock();
 
 	RayHit raycast(const Vector3 &from_d, const Vector3 &dir_d, real_t length_d, bool any_length);
 
@@ -226,6 +227,7 @@ private:
 	int logic_ticks = 0;
 	int frames = 0;
 	bool reset_held = false;
+	uint64_t clock_us = 1000000, clock_last_us = 0;
 	std::vector<Node *> lighting_nodes;
 	FrameTiming timing;
 	Node3D *arrow = nullptr;

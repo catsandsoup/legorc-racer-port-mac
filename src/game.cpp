@@ -14,6 +14,7 @@
 #include <godot_cpp/classes/input.hpp>
 #include <godot_cpp/classes/input_event_joypad_button.hpp>
 #include <godot_cpp/classes/input_event_joypad_motion.hpp>
+#include <godot_cpp/classes/input_event_action.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
@@ -512,6 +513,7 @@ void SupersonicGame::start_mode(int mode) {
 			session->queue_free();
 		}
 		session = memnew(DrivingSession);
+		session->set_process_mode(Node::PROCESS_MODE_PAUSABLE); // the pause menu stops the race
 		add_child(session);
 		move_child(session, 0);
 		session->setup(this, ModeId(mode));
@@ -1211,7 +1213,7 @@ void SupersonicGame::track_device(const Ref<InputEvent> &event) {
 				name.contains("sony") || name.contains("playstation") || name.contains("wireless controller");
 		device = ps ? InputDevice::PLAYSTATION : InputDevice::XBOX;
 		mouse_mode = false;
-	} else if (Object::cast_to<InputEventKey>(event.ptr()) && Ref<InputEventKey>(event)->is_pressed()) {
+	} else if ((Object::cast_to<InputEventKey>(event.ptr()) && Ref<InputEventKey>(event)->is_pressed()) || Object::cast_to<InputEventAction>(event.ptr())) {
 		device = InputDevice::KEYBOARD;
 		mouse_mode = false;
 	} else if (Object::cast_to<InputEventMouseMotion>(event.ptr()) || Object::cast_to<InputEventMouseButton>(event.ptr())) {

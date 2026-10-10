@@ -75,6 +75,9 @@ behind the work. Owner: catsandsoup. The newest session comes first.
 | Layer 2: short parity routes with spawn anywhere | Done (step_steer, slalom, brake, drop, hard_left) |
 | Layer 3: whole-level invariant robot | **To do** |
 | Layer 4: matched-pose visual comparisons | Done (12 views) |
-| **Free Roam** | Built, not yet verified on screen |
-| Quick wins (R reset, restart, live lighting, help once, physics labels) | Built; R verified, the rest not on screen |
-| New UI: title bar, controller challenge select, pause, Settings | Built, not yet verified on screen |
+| **Free Roam** | Done: verified on screen (Linux): no timer, points or arrow; pause, leave |
+| Quick wins (R reset, restart, live lighting, help once, physics labels) | Done: R verified by telemetry; live lighting seen in Settings; help-once and restart not yet screenshotted |
+| New UI: title bar, controller challenge select, pause, Settings | Done (Linux screenshots); not yet seen on the owner's Mac. The pause now really stops the race and its clock |
+| UX and style critic pass on the new UI | **To do** |
+| Texture V flip (shelves, dinosaur, car) | **In progress** |
+| Arrow and wheel jitter; fps drop from 92 to 48 | **To do** |

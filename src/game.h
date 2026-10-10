@@ -85,7 +85,7 @@ private:
 	std::vector<MetalMenu *> menus_to_free;
 	std::function<void()> settings_return;
 	InputDevice device = InputDevice::KEYBOARD;
-	bool mouse_mode = true;
+	bool mouse_mode = false; // true once the mouse is used; keys/pads show focus
 	int select_focus = 0;
 	void close_menu(MetalMenu *&m);
 	void open_title_bar();
