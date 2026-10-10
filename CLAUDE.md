@@ -10,6 +10,7 @@ Read these first, every session, in this order:
    is designed, including the sampled art direction and the controller-first
    rules.
 4. [HANDOFF.md](HANDOFF.md): current state, known bugs, how to run and test.
+   [docs/SESSION_LOG.md](docs/SESSION_LOG.md): the owner's decisions and the task list.
 5. [docs/ROADMAP.md](docs/ROADMAP.md): goals by feasibility.
 
 Judge every milestone against the player journey and "Done means". For any
