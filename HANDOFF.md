@@ -31,6 +31,7 @@ for what's next, and `docs/NEXT_SESSION_PROMPT.md` for the brief to start a new 
 | Settings: in-game panel (F1, Start) | Opens, takes focus, D-pad moves, B/Start closes | Linux screenshots with placeholder art (session 2) |
 | Controller menus | Level select highlight (D-pad, stick, arrows), A picks, B backs out, Start opens settings | Linux screenshots with placeholder art and injected joypad events (session 2) |
 | Keep original files | Copied to `<user data>/original/` after a successful import; auto-import and **Re-import** use them | Clean `HOME`: zip import kept both files; with the zip and `data/` deleted, the next launch re-imported from `original/` |
+| Real-data check (session 2) | Owner's zip: first-run import, controller menus, Start pauses a race, Esc closes the panel and the race goes on, Back leaves; port runs Scavenger Hunt and Supersonic Challenge; 1.00× = 60.0 logic updates/s and 2.250 sim s per real s | Linux screenshots from a clean `HOME` |
 | Release guard | `scripts/release-guard.py`; CI workflow `release-guard.yml`; `package-macos.sh` scans the app zip; optional pre-commit hook | Caught 11 planted leaks (renamed Director files, embedded glTF/MP3 in a .pck, zipped .cct, screenshot, converter JSON, known hash, local path); clean on all history |
 | Mods (assets, `tuning.json`, GDScript, GDExtension) | Asset, tuning and GDScript mods proven | `examples/mods/hello-gdscript` printed live speed in a run |
 | macOS build | CI written. **Run 1 was in progress at handoff**: the converter built and passed its tests on `macos-15`, and the arm64 library was compiling | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
@@ -52,18 +53,13 @@ Gatekeeper flow and controllers on macOS are unproven.
    pedals are on the roadmap.
 4. There is no separate pause menu. Esc (and the controller's Back/View
    button) leaves the race, as in the original. Start opens the settings
-   panel, which pauses a race and has Main Menu. Start pausing a race and
-   Esc closing the panel without also leaving the race (Back now needs a
-   release first, `DrivingSession::disarm_back`) are **untested**: they
-   need real game data to drive.
-5. The controller menu work was tested with placeholder art from a test
-   stand-in converter, not the game's menus. The level select steps
-   through modes in list order (left/up = previous, right/down = next)
-   whatever the buttons' on-screen layout; check it feels right on the
-   real screen. No button glyphs yet.
-6. `scripts/release-guard.sha256` has no hashes yet. The owner adds the
-   real `game.dcr` and `GUILibrary.cct` hashes with `--print-hash` (the
-   file says how). The guard's other checks work without them.
+   panel, which pauses a race and has Main Menu. Proven with the real
+   data in session 2.
+5. Controller menus have no button glyphs yet. The level select's buttons
+   are stacked vertically, so up/down follow the list order.
+6. Prize modes run in the port but haven't been compared against the
+   original under Wine (Wine isn't installed in the container; the owner
+   was asked before downloading it).
 7. The macOS export preset has `exclude_filter=""`. A local `game/data/`
    folder would be exported into the .pck; the guard would fail that
    build. Consider `exclude_filter="data/*"` (left alone because the CI
@@ -131,6 +127,9 @@ For a fresh first-run test, set `HOME` to an empty folder that contains
 
 `SSRC_TEST_FLOW` also takes `joy:<button>` (a, b, x, y, start, back, up,
 down, left, right) to tap a controller button.
+`SSRC_TEST_TAPS=joy:start@3,key:escape@5` taps buttons or keys during a
+race (seconds after it starts); `SSRC_TEST_JOY_DEVICE=1` sends taps as a
+second controller. Each run ends with a game-speed line.
 
 To test menus and import without the game files, point `SSRC_IMPORTER` at
 a script that writes placeholder PNGs, `images.json`, `manifest.json` and
@@ -146,12 +145,12 @@ Release guard: `python3 scripts/release-guard.py --tree` (or `--staged`,
 1. Get CI green. If the first run fails, read the job log, fix and push.
 2. The owner downloads the artifact and plays it on a Mac. Fix what they
    hit first.
-3. With the game files: screenshot the new controller flow on the real
-   menus, check Start pauses a race and Esc closes the panel without
-   leaving the race, and add the two hashes to
-   `scripts/release-guard.sha256`. Then finish Level 0: verify the prize
-   modes against Wine, and the car fin textures.
+3. Finish Level 0: compare the prize modes against Wine
+   (`docs/REFERENCE.md`), and fix the car fin textures.
 4. Then the controller milestone: analog trigger pedals (opt-in), glyphs,
    rumble, then DualSense adaptive triggers through GameController.
 5. Then the UI milestone: one settings model, drawn in the game's art,
    with Controls, Car Setup, Events, Mods and Developer pages.
+6. Multiplayer is scoped in `docs/MULTIPLAYER.md` (split-screen first,
+   then LAN, then internet, then PC). Not started; wait for the owner's
+   go-ahead.
