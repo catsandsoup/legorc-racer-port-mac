@@ -2,25 +2,92 @@
 
 By [catsandsoup](https://github.com/catsandsoup). See [AUTHORS.md](AUTHORS.md).
 
-A native Mac port of **LEGO Supersonic RC** (2003, Shockwave/Director 8.5).
-There's no Flash, no Shockwave and no emulator: the game logic was
-decompiled from Lingo and rewritten in C++, and every asset is converted to
-an open format and rendered by a modern engine.
-
-- Apple silicon native (arm64), Metal renderer, Jolt physics on multiple cores
-- Any window size or fullscreen, up to 4K and beyond, with optional supersampling
-  or FSR upscaling
-- Any frame rate (vsync off, 120 Hz, 240 Hz, unlimited). The physics runs
-  exactly as the 2003 game did, independent of your display: 40 frames a
-  second, each split into the original's two physics updates, then smoothed
-  on screen by interpolation. So the car handles the same at 60, 120 or 240 Hz.
-- Mac menu bar for display, graphics, gameplay and audio settings
-- Moddable: swap textures, models, sounds and physics constants by dropping
-  files in a folder, or write C++ or GDScript mods
+A native Mac port of **LEGO Supersonic RC** (2003, Shockwave/Director 8.5),
+rebuilt to be a fun, modern, plug-and-play game. There's no Flash, no
+Shockwave and no emulator. The game logic was decompiled from Lingo and
+rewritten in C++, and every asset is converted to an open format and
+rendered by a modern engine (Godot 4.7, Metal, Jolt physics).
 
 You need your own copy of the original game files (`game.dcr` and
 `GUILibrary.cct`, or the zip they came in). They are not included and are
 never uploaded anywhere.
+
+## What's new compared with the 2003 game
+
+- **Play with a controller, everywhere.** Xbox and PlayStation pads work on
+  every screen: title, challenge select, races, pause and settings. Button
+  prompts switch automatically to the device you're holding (keyboard,
+  Xbox or PlayStation).
+- **New menus in the game's own style.** The original only had mouse menus
+  and no pause, and settings lived in the Mac menu bar, which a controller
+  player can't reach. So the port adds:
+  - a title bar with **Start, Free Roam, Settings**
+  - a **pause menu** on Esc or Start: Resume, Restart, Settings, Leave,
+    Quit
+  - a **Settings** page drawn in the original's brushed-metal look, where
+    every change applies instantly
+
+  The original screens (title art, challenge select, help, HUD) are kept.
+  The macOS menu bar still works, as a shortcut.
+- **Free Roam.** Drive anywhere in the toy shop with no timer and no goals.
+  Quit from the pause menu whenever you like.
+- **Quality of life:**
+  - **R** (or **Y** / **△**) puts the car back on its wheels
+  - **⌘R** restarts a race
+  - the help screen shows once per session
+  - unlocks are saved
+- **Any resolution and any frame rate,** up to 4K and beyond, 60, 120 or
+  240 Hz. The physics keeps the original's 40-frame rhythm (two physics
+  updates per frame), independent of your display, and is smoothed on
+  screen. So the car handles the same on every Mac.
+- **Checked against the real thing.** The original game runs under Wine
+  as a reference. Tools in `scripts/reference/` read its car physics
+  straight from memory and compare it with the port, route by route and
+  view by view.
+
+## Modding (for people and their AI agents)
+
+Supersonic RC is built to be modded. Everything lives in plain files:
+
+| You want to | Do this |
+|---|---|
+| Swap textures (4K packs welcome) | Drop PNGs into a mod folder with the same path, e.g. `scenes/world_textures/ToyBox003.png` |
+| Swap the car or props | Replace `scenes/car.glb` (glTF 2.0; keep `Car` and `Wheel1`..`Wheel4`) |
+| Change physics, speed, grip, timers | A `tuning.json` with any constant from [`src/tuning.h`](src/tuning.h), e.g. `{ "drive_force": 9500 }` |
+| Change sounds or music | `audio/<name>.ogg` / `.wav` / `.mp3` |
+| Script new behaviour | `mod.gd` (GDScript), with access to the race, the car and the HUD |
+| Write native code | A GDExtension (C++, Rust…) in the mod folder |
+
+Mods live in `~/Library/Application Support/Supersonic RC/mods/<name>/`
+(**Game → Open Mods Folder**), load in alphabetical order, and later mods
+win. Full guide: [docs/MODDING.md](docs/MODDING.md). Examples:
+`examples/mods/`.
+
+**For AI agents working on this repo:** start with [CLAUDE.md](CLAUDE.md).
+It points to the rules, the handoff, the session log and the testing
+tools (spawn the car anywhere, telemetry, matched screenshots against the
+original).
+
+## Help wanted: other platforms and more
+
+This port targets Apple silicon Macs first, but nothing in it is
+Mac-only. The engine (Godot) exports to Windows, Linux, iOS and Android,
+the converter is plain Rust, and there's already a Linux export preset.
+**Ports are very welcome**: Windows, Linux, Steam Deck, mobile, anything.
+Build the GDExtension for your platform, add an export preset and a CI
+job, and open a pull request.
+
+Planned next, and open to help:
+
+- **local co-op**: 2- or 4-player split screen ("lounge") with one car per
+  controller
+- maybe online play later
+- analogue trigger pedals and rumble
+- AI racers and new modes
+
+See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+I look forward to seeing how other people enhance this work. — catsandsoup
 
 ## Play
 
@@ -64,19 +131,19 @@ or use **Game → Unlock All Modes**. Unlocks are saved.
 
 ## Settings
 
-Everything is in the menu bar (and in the in-game panel, F1):
+Open **Settings** from the title screen, the pause menu or ⌘,. It works
+with a controller, and every change applies at once:
 
-- **Display:** window mode, window size (up to 3840 × 2160), render
-  resolution 50 to 200 %, upscaler (bilinear, FSR 1), anti-aliasing
-  (MSAA 2/4/8×, FXAA, TAA), V-Sync, frame rate limit, FPS counter
-- **Graphics:** Original lighting (Director's own lighting model with the
-  baked lightmaps, checked against the 2003 game) or Enhanced (real-time
-  shadows, SSAO, glow); texture filtering; field of view; camera. Lighting
-  and texture changes apply instantly, even mid-race
-- **Gameplay:** game speed 50 to 200 %; physics precision (Standard, High,
-  Very High: finer physics steps, same handling); help screen before the
-  first race only, or before every race as in the original
-- **Audio:** music and effects volume
+- window or full screen
+- frame rate limit, V-Sync, and a frame-rate counter
+- lighting: Original (the 2003 lightmaps) or Enhanced (real-time
+  shadows, SSAO, glow)
+- smooth edges, textures (smooth or retro) and field of view
+- help screen: before the first race only, or every race
+- music and sound effects volume
+
+Technical options (render resolution, upscaler, physics precision, game
+speed, camera) are on the developer page (F1) and in the Mac menu bar.
 
 ## How it works
 
