@@ -140,7 +140,7 @@ static void add_joy_axis(const StringName &action, JoyAxis a, real_t dir) {
 
 void SupersonicGame::build_input_map() {
 	InputMap *im = InputMap::get_singleton();
-	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "back", "steer_left_analog", "steer_right_analog", "menu_accept", "menu_up", "menu_down", "reset_car" };
+	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "steer_left_analog", "steer_right_analog", "menu_accept", "menu_up", "menu_down", "menu_left", "menu_right", "menu_back", "pause", "reset_car" };
 	for (const char *a : actions) {
 		if (!im->has_action(a)) {
 			im->add_action(a, 0.3);
@@ -159,9 +159,6 @@ void SupersonicGame::build_input_map() {
 	add_key("handbrake", KEY_SPACE);
 	add_joy_button("handbrake", JOY_BUTTON_B);
 	add_joy_button("handbrake", JOY_BUTTON_RIGHT_SHOULDER);
-	add_key("back", KEY_ESCAPE);
-	add_joy_button("back", JOY_BUTTON_START);
-	add_joy_button("back", JOY_BUTTON_BACK);
 	add_joy_axis("steer_left_analog", JOY_AXIS_LEFT_X, -1);
 	add_joy_axis("steer_right_analog", JOY_AXIS_LEFT_X, 1);
 	// Not in the original: put the car back on its wheels on demand.
@@ -171,6 +168,21 @@ void SupersonicGame::build_input_map() {
 	add_key("menu_accept", KEY_KP_ENTER);
 	add_key("menu_accept", KEY_SPACE);
 	add_joy_button("menu_accept", JOY_BUTTON_A);
+	// Port menus: Esc / Start pause the race; B / Esc go back.
+	add_key("pause", KEY_ESCAPE);
+	add_joy_button("pause", JOY_BUTTON_START);
+	add_joy_button("pause", JOY_BUTTON_BACK);
+	add_key("menu_back", KEY_ESCAPE);
+	add_key("menu_back", KEY_BACKSPACE);
+	add_joy_button("menu_back", JOY_BUTTON_B);
+	add_key("menu_left", KEY_LEFT);
+	add_joy_button("menu_left", JOY_BUTTON_DPAD_LEFT);
+	add_joy_axis("menu_left", JOY_AXIS_LEFT_X, -1);
+	add_key("menu_right", KEY_RIGHT);
+	add_joy_button("menu_right", JOY_BUTTON_DPAD_RIGHT);
+	add_joy_axis("menu_right", JOY_AXIS_LEFT_X, 1);
+	add_joy_axis("menu_up", JOY_AXIS_LEFT_Y, -1);
+	add_joy_axis("menu_down", JOY_AXIS_LEFT_Y, 1);
 	add_key("menu_up", KEY_UP);
 	add_joy_button("menu_up", JOY_BUTTON_DPAD_UP);
 	add_key("menu_down", KEY_DOWN);
@@ -201,6 +213,10 @@ void SupersonicGame::_ready() {
 	stage->set_clip_contents(true);
 	stage->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 	ui_layer->add_child(stage);
+	menu_layer = memnew(Control);
+	menu_layer->set_size(Vector2(640, 480));
+	menu_layer->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+	ui_layer->add_child(menu_layer);
 	fader = memnew(ColorRect);
 	fader->set_color(Color(0, 0, 0, 0));
 	fader->set_anchors_preset(Control::PRESET_FULL_RECT);
@@ -263,7 +279,7 @@ void SupersonicGame::unlock_mode(ModeId id) {
 }
 
 bool SupersonicGame::is_unlocked(ModeId id) const {
-	return unlocked[int(id)] || ctrl_unlock_all;
+	return id == ModeId::FREE_ROAM || unlocked[int(id)] || ctrl_unlock_all;
 }
 
 Dictionary SupersonicGame::get_tuning() const {
@@ -353,6 +369,10 @@ void SupersonicGame::fade_out(std::function<void()> done) {
 }
 
 void SupersonicGame::_process(double) {
+	for (MetalMenu *m : menus_to_free) {
+		delete m;
+	}
+	menus_to_free.clear();
 	uint64_t now = Time::get_singleton()->get_ticks_usec();
 	real_t dt_ms = last_usec ? (now - last_usec) / 1000.0 : 0;
 	last_usec = now;
@@ -387,6 +407,7 @@ void SupersonicGame::_process(double) {
 void SupersonicGame::layout_stage() {
 	Vector2 vs = get_viewport()->get_visible_rect().size;
 	stage->set_position(((vs - Vector2(640, 480)) / 2).floor());
+	menu_layer->set_position(stage->get_position());
 	fps_label->set_position(Vector2(6, vs.y - 22));
 	if (settings_panel) {
 		settings_panel->set_position(((vs - settings_panel->get_size()) / 2).floor());
@@ -418,10 +439,12 @@ void SupersonicGame::go_title() {
 	clear_stage();
 	backdrop->set_visible(true);
 	add_image("Title-v8");
+	open_title_bar();
 	fade_in();
 }
 
 void SupersonicGame::go_select_level() {
+	close_menu(title_bar);
 	screen = Screen::SELECT;
 	clear_stage();
 	backdrop->set_visible(true);
@@ -465,11 +488,14 @@ void SupersonicGame::update_buttons() {
 		}
 		b.rect->set_position(Vector2(320, 240) - Assets::member_reg(member));
 		Rect2 r(Vector2(320, 240) - Assets::member_reg(b.base), Assets::member_texture(b.base).is_valid() ? Assets::member_texture(b.base)->get_size() : Vector2());
-		b.hover = enabled && !input_locked && r.has_point(m);
+		b.hover = enabled && !input_locked && (mouse_mode ? r.has_point(m) : b.mode == select_focus);
 	}
 }
 
 void SupersonicGame::start_mode(int mode) {
+	close_menu(title_bar);
+	close_menu(pause_menu);
+	get_tree()->set_pause(false);
 	last_mode = mode;
 	screen = Screen::LOADING;
 	clear_stage();
@@ -511,10 +537,15 @@ void SupersonicGame::session_finished() {
 }
 
 void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
+	track_device(event);
 	Ref<InputEventKey> key = event;
 	if (key.is_valid() && key->is_pressed() && !key->is_echo()) {
-		if (key->get_keycode() == KEY_F1 || (key->get_keycode() == KEY_COMMA && key->is_command_or_control_pressed())) {
-			toggle_settings_panel();
+		if (key->get_keycode() == KEY_F1) {
+			toggle_settings_panel(); // developer page
+			return;
+		}
+		if (key->get_keycode() == KEY_COMMA && key->is_command_or_control_pressed()) {
+			run_action("settings");
 			return;
 		}
 		if (key->get_keycode() == KEY_S && !key->is_command_or_control_pressed()) {
@@ -539,12 +570,31 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 		}
 	}
 	if (settings_panel && settings_panel->is_visible()) {
-		if (event->is_action_pressed("back")) {
+		if (event->is_action_pressed("menu_back")) {
 			toggle_settings_panel();
 		}
 		return;
 	}
+	if (settings_menu) {
+		settings_menu->handle_input(event);
+		return;
+	}
+	if (pause_menu) {
+		if (event->is_action_pressed("pause") && !event->is_action_pressed("menu_back")) {
+			close_pause(); // Start again resumes
+		} else {
+			pause_menu->handle_input(event);
+		}
+		return;
+	}
 	if (input_locked || fade_dir != 0) {
+		return;
+	}
+	if (screen == Screen::DRIVING && event->is_action_pressed("pause")) {
+		open_pause();
+		return;
+	}
+	if (screen == Screen::TITLE && title_bar && title_bar->handle_input(event)) {
 		return;
 	}
 	Ref<InputEventMouseButton> mb = event;
@@ -553,10 +603,10 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 	bool accept = event->is_action_pressed("menu_accept");
 	switch (screen) {
 		case Screen::TITLE:
-			if (click || accept) {
+			// The original: click anywhere to start. Keys and buttons go
+			// through the title bar (Start / Free Roam / Settings).
+			if (click) {
 				fade_out([this]() { go_select_level(); });
-			} else if (event->is_action_pressed("back")) {
-				toggle_settings_panel();
 			}
 			break;
 		case Screen::SELECT: {
@@ -574,21 +624,27 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 					b.pressed = false;
 				}
 			}
-			if (accept) {
-				// Keyboard/gamepad: highest unlocked mode, or the hovered one.
-				for (int i = 4; i >= 0; i--) {
+			// Keyboard / controller: up and down move the glow between the
+			// unlocked challenges, accept picks the one that glows.
+			if (event->is_action_pressed("menu_up", true) || event->is_action_pressed("menu_down", true)) {
+				int dir = event->is_action_pressed("menu_up", true) ? -1 : 1;
+				for (int k = 1; k <= 5; k++) {
+					int i = (select_focus + dir * k + 10) % 5;
 					if (is_unlocked(ModeId(i))) {
-						chosen = i;
+						select_focus = i;
 						break;
 					}
 				}
+			}
+			if (accept) {
+				chosen = select_focus;
 				for (Button4 &b : buttons) {
-					if (b.hover) {
+					if (mouse_mode && b.hover) {
 						chosen = b.mode;
 					}
 				}
 			}
-			if (event->is_action_pressed("back")) {
+			if (event->is_action_pressed("menu_back")) {
 				fade_out([this]() { go_title(); });
 			}
 			if (chosen >= 0 && is_unlocked(ModeId(chosen))) {
@@ -608,7 +664,7 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 				sound->fade_out(8, 500);
 				int m = pending_mode;
 				fade_out([this, m]() { start_mode(m); });
-			} else if (event->is_action_pressed("back")) {
+			} else if (event->is_action_pressed("menu_back")) {
 				fade_out([this]() { go_select_level(); });
 			}
 			break;
@@ -933,6 +989,18 @@ void SupersonicGame::run_action(const String &action) {
 			fade_out([this, m]() { start_mode(m); });
 		}
 	} else if (action == "settings") {
+		if (screen == Screen::DRIVING && !pause_menu) {
+			open_pause();
+		}
+		if (!settings_menu) {
+			MetalMenu *back_to_pause = pause_menu;
+			open_settings([this, back_to_pause]() {
+				if (back_to_pause && pause_menu) {
+					pause_menu->root->set_visible(true);
+				}
+			});
+		}
+	} else if (action == "developer") {
 		toggle_settings_panel();
 	} else if (action == "quit") {
 		prefs.save();
@@ -957,6 +1025,7 @@ void SupersonicGame::build_native_menu() {
 	};
 	RID game_menu = nm->create_menu();
 	action(game_menu, "Main Menu", "main_menu");
+	action(game_menu, "Restart Race", "restart_race");
 	nm->add_separator(game_menu);
 	action(game_menu, "Unlock All Modes", "unlock_all");
 	action(game_menu, "Reset Progress", "reset_progress");
@@ -966,6 +1035,7 @@ void SupersonicGame::build_native_menu() {
 	nm->add_separator(game_menu);
 	action(game_menu, "Re-import Game Files...", "reimport");
 	action(game_menu, "Show Converted Data", "open_data");
+	action(game_menu, "Developer Settings (F1)", "developer");
 	nm->add_submenu_item(main, "Game", game_menu);
 
 	const char *sections[] = { "Display", "Graphics", "Gameplay", "Audio" };
@@ -1049,7 +1119,7 @@ void SupersonicGame::build_settings_panel() {
 	vb->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	scroll->add_child(vb);
 	Label *title = memnew(Label);
-	title->set_text("Settings  (F1 or Esc to close)");
+	title->set_text("Developer settings  (F1 or Esc to close)");
 	title->add_theme_font_size_override("font_size", 18);
 	vb->add_child(title);
 	String last_section;
@@ -1112,6 +1182,185 @@ void SupersonicGame::toggle_settings_panel() {
 	settings_panel->reset_size();
 	layout_stage();
 	get_tree()->set_pause(show && screen == Screen::DRIVING);
+}
+
+
+// ============================================================ player menus
+
+void SupersonicGame::close_menu(MetalMenu *&m) {
+	if (m) {
+		m->root->set_visible(false);
+		menus_to_free.push_back(m); // freed next frame (we may be inside its callback)
+		m = nullptr;
+	}
+}
+
+void SupersonicGame::track_device(const Ref<InputEvent> &event) {
+	InputDevice before = device;
+	Ref<InputEventJoypadButton> jb = event;
+	Ref<InputEventJoypadMotion> jm = event;
+	int joy = -1;
+	if (jb.is_valid() && jb->is_pressed()) {
+		joy = jb->get_device();
+	} else if (jm.is_valid() && Math::abs(jm->get_axis_value()) > 0.5) {
+		joy = jm->get_device();
+	}
+	if (joy >= 0) {
+		String name = Input::get_singleton()->get_joy_name(joy).to_lower();
+		bool ps = name.contains("ps3") || name.contains("ps4") || name.contains("ps5") || name.contains("dualsense") || name.contains("dualshock") ||
+				name.contains("sony") || name.contains("playstation") || name.contains("wireless controller");
+		device = ps ? InputDevice::PLAYSTATION : InputDevice::XBOX;
+		mouse_mode = false;
+	} else if (Object::cast_to<InputEventKey>(event.ptr()) && Ref<InputEventKey>(event)->is_pressed()) {
+		device = InputDevice::KEYBOARD;
+		mouse_mode = false;
+	} else if (Object::cast_to<InputEventMouseMotion>(event.ptr()) || Object::cast_to<InputEventMouseButton>(event.ptr())) {
+		mouse_mode = true;
+	}
+	if (device != before) {
+		for (MetalMenu *m : { title_bar, pause_menu, settings_menu }) {
+			if (m) {
+				m->set_device(device);
+			}
+		}
+	}
+}
+
+void SupersonicGame::open_title_bar() {
+	close_menu(title_bar);
+	// Over the original's "Click to Start" line: the port's three doors.
+	title_bar = new MetalMenu(menu_layer, "", Rect2(100, 438, 440, 38), MetalMenu::BAR);
+	title_bar->set_device(device);
+	title_bar->set_items({
+			{ "Start", nullptr, nullptr, [this]() { fade_out([this]() { go_select_level(); }); } },
+			{ "Free Roam", nullptr, nullptr, [this]() {
+				 sound->fade_out(8, 500);
+				 close_menu(title_bar);
+				 fade_out([this]() { start_mode(int(ModeId::FREE_ROAM)); });
+			 } },
+			{ "Settings", nullptr, nullptr, [this]() { open_settings([this]() {
+				 if (title_bar) {
+					 title_bar->root->set_visible(true);
+				 }
+			 }); } },
+	});
+}
+
+void SupersonicGame::open_pause() {
+	if (pause_menu || !session) {
+		return;
+	}
+	get_tree()->set_pause(true);
+	pause_menu = new MetalMenu(menu_layer, last_mode == int(ModeId::FREE_ROAM) ? "Free Roam" : "Paused", Rect2(170, 92, 300, 296), MetalMenu::LIST);
+	pause_menu->set_device(device);
+	pause_menu->set_back([this]() { close_pause(); });
+	pause_menu->set_items({
+			{ "Resume", nullptr, nullptr, [this]() { close_pause(); } },
+			{ "Restart", nullptr, nullptr, [this]() {
+				 close_pause();
+				 run_action("restart_race");
+			 } },
+			{ "Settings", nullptr, nullptr, [this]() {
+				 pause_menu->root->set_visible(false);
+				 open_settings([this]() {
+					 if (pause_menu) {
+						 pause_menu->root->set_visible(true);
+					 }
+				 });
+			 } },
+			{ last_mode == int(ModeId::FREE_ROAM) ? "Leave Free Roam" : "Leave Race", nullptr, nullptr, [this]() {
+				 close_pause();
+				 if (session) {
+					 session->request_exit();
+				 }
+			 } },
+			{ "Quit Game", nullptr, nullptr, [this]() { run_action("quit"); } },
+	});
+}
+
+void SupersonicGame::close_pause() {
+	close_menu(pause_menu);
+	if (!settings_menu) {
+		get_tree()->set_pause(false);
+	}
+	// Don't let the button that closed the menu act in the race.
+	Input::get_singleton()->action_release("accelerate");
+	Input::get_singleton()->action_release("handbrake");
+}
+
+void SupersonicGame::open_settings(std::function<void()> on_return) {
+	if (settings_menu) {
+		return;
+	}
+	if (title_bar) {
+		title_bar->root->set_visible(false);
+	}
+	settings_return = std::move(on_return);
+	struct Opt {
+		const char *label;
+		const char *key;
+		std::vector<std::pair<String, double>> choices;
+	};
+	auto pct = [](std::initializer_list<int> v) {
+		std::vector<std::pair<String, double>> c;
+		for (int x : v) {
+			c.push_back({ String::num_int64(x) + "%", x / 100.0 });
+		}
+		return c;
+	};
+	// Plain words, few choices, everything applies at once (no restart).
+	std::vector<Opt> opts = {
+		{ "Window", "window_mode", { { "Window", 0 }, { "Full Screen", 1 } } },
+		{ "Frame Rate Limit", "max_fps", { { "30", 30 }, { "60", 60 }, { "120", 120 }, { "144", 144 }, { "240", 240 }, { "Unlimited", 0 } } },
+		{ "V-Sync", "vsync", { { "Off", 0 }, { "On", 1 } } },
+		{ "Show Frame Rate", "show_fps", { { "Off", 0 }, { "On", 1 } } },
+		{ "Lighting", "lighting", { { "Original", 0 }, { "Enhanced", 1 } } },
+		{ "Smooth Edges", "antialiasing", { { "Off", 0 }, { "Low", 1 }, { "Medium", 2 }, { "High", 3 } } },
+		{ "Textures", "texture_filter", { { "Smooth", 2 }, { "Soft", 1 }, { "Retro", 0 } } },
+		{ "Field of View", "fov", { { "Narrow", 60 }, { "Original", 0 }, { "Wide", 80 }, { "Wider", 90 }, { "Widest", 100 } } },
+		{ "Help Screen", "help_every_race", { { "First race only", 0 }, { "Every race", 1 } } },
+		{ "Music", "music_volume", pct({ 0, 25, 50, 75, 100 }) },
+		{ "Sound Effects", "effects_volume", pct({ 0, 25, 50, 75, 100 }) },
+	};
+	settings_menu = new MetalMenu(menu_layer, "Settings", Rect2(60, 34, 520, 412), MetalMenu::SETTINGS);
+	settings_menu->set_device(device);
+	settings_menu->set_back([this]() { close_settings(); });
+	std::vector<MenuItem> items;
+	for (const Opt &o : opts) {
+		String key = o.key;
+		auto choices = o.choices;
+		auto index = [this, key, choices]() {
+			double cur = get_option(key);
+			int best = 0;
+			for (int i = 0; i < int(choices.size()); i++) {
+				if (Math::abs(choices[i].second - cur) < Math::abs(choices[best].second - cur)) {
+					best = i;
+				}
+			}
+			return best;
+		};
+		items.push_back({ o.label,
+				[index, choices]() { return choices[index()].first; },
+				[this, key, index, choices](int dir) {
+					int n = int(choices.size());
+					set_option(key, choices[(index() + dir + n) % n].second);
+				},
+				nullptr });
+	}
+	items.push_back({ "Done", nullptr, nullptr, [this]() { close_settings(); } });
+	settings_menu->set_items(items);
+}
+
+void SupersonicGame::close_settings() {
+	close_menu(settings_menu);
+	auto ret = settings_return;
+	settings_return = nullptr;
+	if (ret) {
+		ret();
+	}
+	if (!pause_menu) {
+		get_tree()->set_pause(false);
+	}
 }
 
 } // namespace ssrc

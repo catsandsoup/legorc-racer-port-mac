@@ -169,7 +169,7 @@ fn convert_all(player: &vm_rust::player::DirPlayer, out: &Path, verbose: bool) -
                         other => sanitize(other),
                     };
                     let lm = if file == "world" { &lightmaps } else { &no_lightmaps };
-                    let flip_v = file != "car";
+                    let flip_v = file != "car" && std::env::var("SSRC_IMPORT_NOFLIP").is_err();
                     let opts = SceneOptions { lightmaps: lm, texture_dir_name: format!("{file}_textures"), flip_v };
                     let rep = scene::convert(sc, &out.join("scenes"), &format!("{file}.glb"), &opts)?;
                     for mm in &rep.lightmap_mismatches {

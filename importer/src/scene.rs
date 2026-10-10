@@ -95,6 +95,12 @@ fn mesh_shaders(scene: &W3dScene, node_name: &str, res_name: &str, mesh_count: u
     let res = scene.model_resources.iter().find(|(k, _)| k.to_string() == res_name).map(|(_, v)| v);
     let mut out = vec![node_shader.to_string(); mesh_count];
     if let Some(res) = res {
+        if std::env::var("SSRC_IMPORT_DEBUG").is_ok() {
+            eprintln!("[bindings] node {} res {} node_shader {} meshes {}", node_name, res_name, node_shader, mesh_count);
+            for b in &res.shader_bindings {
+                eprintln!("    {} -> {:?}", b.name, b.mesh_bindings.iter().map(|m| m.to_string()).collect::<Vec<_>>());
+            }
+        }
         let pick = res
             .shader_bindings
             .iter()

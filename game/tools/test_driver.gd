@@ -6,6 +6,9 @@
 #   SSRC_TEST_OUT=/path/prefix        screenshot path prefix
 #   SSRC_TEST_QUIT=8                  quit after N seconds of driving
 #   SSRC_TEST_TELEMETRY=/path.csv     write the car state every frame (Director units)
+#   SSRC_TEST_EVENTS=pause@1,menu_down@1.5,shot:paused@2   button presses / shots at real
+#                                     seconds after driving starts (work while paused)
+#   SSRC_TEST_FLOW also takes act:<action> (a menu button press)
 extends Node
 
 var enabled := false
@@ -20,6 +23,8 @@ var game: Node
 var flow: Array = []
 var flow_t := 0.0
 var telemetry: FileAccess
+var events: Array = []
+var t_real := 0.0
 
 func _ready() -> void:
 	enabled = OS.get_environment("SSRC_TEST") != ""
@@ -36,6 +41,9 @@ func _ready() -> void:
 		var r = p[1].split("-")
 		inputs.append([p[0], float(r[0]), float(r[1]), false])
 	flow = Array(OS.get_environment("SSRC_TEST_FLOW").split(",", false))
+	for e in OS.get_environment("SSRC_TEST_EVENTS").split(",", false):
+		var p = e.split("@")
+		events.append([p[0], float(p[1])])
 	if OS.get_environment("SSRC_TEST_TELEMETRY") != "":
 		telemetry = FileAccess.open(OS.get_environment("SSRC_TEST_TELEMETRY"), FileAccess.WRITE)
 		telemetry.store_line("t,sim,px,py,pz,cx,cy,cz,vx,vy,vz,wx,wy,wz,xx,xy,xz,yx,yy,yz,zx,zy,zz")
@@ -49,6 +57,16 @@ func log_state() -> void:
 		var v: Vector3 = st[k]
 		row.append_array([v.x, v.y, v.z])
 	telemetry.store_line(",".join(row.map(func(x): return "%.5f" % x)))
+
+func press(action: String) -> void:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	var up := InputEventAction.new()
+	up.action = action
+	up.pressed = false
+	Input.parse_input_event(up)
 
 func shot(tag: String) -> void:
 	var img := get_viewport().get_texture().get_image()
@@ -70,7 +88,9 @@ func _process(delta: float) -> void:
 			var step: String = flow.pop_front()
 			flow_t = 0.0
 			print("[test] flow step ", step, " at ", t_total)
-			if step.begins_with("mode:"):
+			if step.begins_with("act:"):
+				press(step.substr(4))
+			elif step.begins_with("mode:"):
 				game.start_mode(int(step.substr(5)))
 			elif step.begins_with("shot:"):
 				shot(step.substr(5))
@@ -97,6 +117,13 @@ func _process(delta: float) -> void:
 			print("[test] timeout before driving")
 			get_tree().quit(2)
 		return
+	t_real += real_dt
+	while events.size() > 0 and t_real >= events[0][1]:
+		var e: String = events.pop_front()[0]
+		if e.begins_with("shot:"):
+			shot(e.substr(5))
+		else:
+			press(e)
 	while shots.size() > 0 and t_drive >= shots[0]:
 		shot("drive_%05.2f" % shots.pop_front())
 

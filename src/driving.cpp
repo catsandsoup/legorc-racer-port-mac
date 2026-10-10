@@ -38,6 +38,7 @@ const char *mode_script_name(ModeId id) {
 		case ModeId::STUNT: return "stunt_rally";
 		case ModeId::SCAVENGER: return "scavenger_hunt";
 		case ModeId::SUPERSONIC: return "supersonic_challenge";
+		case ModeId::FREE_ROAM: return "free_roam";
 		default: return "";
 	}
 }
@@ -208,6 +209,13 @@ void Hud::set_timer(const String &mmss) {
 void Hud::show_timer(bool on) {
 	timer_caption->set_visible(on);
 	for (Label *l : timer_digits) {
+		l->set_visible(on);
+	}
+}
+
+void Hud::show_points(bool on) {
+	points_caption->set_visible(on);
+	for (Label *l : points_digits) {
 		l->set_visible(on);
 	}
 }
@@ -550,6 +558,29 @@ void CheckpointMode::havok_update() {
 }
 
 // ---- free_driving ----
+// Free Roam (not in the original): drive anywhere, no timer, no goals, no
+// end. Stunt messages still appear; the pick-up still rescues a car that
+// leaves the world. Leave from the pause menu.
+class FreeRoam : public GameMode {
+public:
+	using GameMode::GameMode;
+	void real_start() override {
+		session->get_hud()->setup_points(false);
+		session->get_hud()->show_timer(false);
+		session->get_hud()->show_points(false);
+	}
+	void stunt_event(int p) override {
+		text(stunt_text(p) + "\r" + String::num_int64(p) + " Points!");
+	}
+	void step_frame() override {
+		if (text_started_ms >= 0 && session->real_ms() > text_started_ms + 5000) {
+			session->get_hud()->fade_out_message();
+			text_started_ms = -1;
+		}
+		pickup_update();
+	}
+};
+
 class FreeDriving : public CheckpointMode {
 public:
 	using CheckpointMode::CheckpointMode;
@@ -840,6 +871,7 @@ void DrivingSession::setup(SupersonicGame *p_game, ModeId mode_id) {
 
 	switch (mode_id) {
 		case ModeId::FREE: mode = std::make_unique<FreeDriving>(this, mode_id); break;
+		case ModeId::FREE_ROAM: mode = std::make_unique<FreeRoam>(this, mode_id); break;
 		case ModeId::CHECKPOINT: mode = std::make_unique<CheckpointChase>(this, mode_id); break;
 		case ModeId::STUNT: mode = std::make_unique<StuntRally>(this, mode_id); break;
 		case ModeId::SCAVENGER: mode = std::make_unique<ScavengerHunt>(this, mode_id); break;
@@ -1169,10 +1201,6 @@ void DrivingSession::logic_update() {
 	c->after_physics_contacts();
 
 	Input *inp = Input::get_singleton();
-	if (inp->is_action_pressed("back") && !finished) {
-		request_exit();
-		return;
-	}
 	DriveInput in;
 	in.up = inp->is_action_pressed("accelerate");
 	in.down = inp->is_action_pressed("brake");
@@ -1213,11 +1241,15 @@ void DrivingSession::frame_step() {
 	c->step_frame();
 	mode->step_frame();
 	static bool probe = OS::get_singleton()->get_environment("SSRC_COLLISION_PROBE") != "";
-	if (probe && logic_ticks == 2) {
+	static bool probed = false;
+	if (probe && !probed && logic_ticks >= 2) {
+		probed = true;
 		run_collision_probe();
 	}
 	static String pick = OS::get_singleton()->get_environment("SSRC_PICK");
-	if (!pick.is_empty() && logic_ticks == 200) {
+	static bool picked = false;
+	if (!pick.is_empty() && !picked && logic_ticks >= 200) {
+		picked = true;
 		// Debug: which model/shader is under screen point x,y (640x480 space)?
 		for (const String &pt : pick.split(";")) {
 			Vector2 sp(pt.get_slice(",", 0).to_float(), pt.get_slice(",", 1).to_float());

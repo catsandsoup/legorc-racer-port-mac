@@ -35,6 +35,46 @@ All "Done" rows were proven on Linux (Xvfb, llvmpipe, Godot's
 Compatibility renderer). Metal, Forward+, MetalFX, the native menu, the
 Gatekeeper flow and controllers on macOS are unproven.
 
+## Session 1 end state (read first)
+
+Pushed but NOT yet verified on screen. Run the walkthrough before anything
+else (test_driver `act:` flow steps and `SSRC_TEST_EVENTS` exist for it):
+
+- **Free Roam:** `ModeId::FREE_ROAM`; a "Free Roam" pill on the title bar.
+- **New menus (`src/menu_ui.*`):**
+  - title bar: Start / Free Roam / Settings
+  - controller focus on the challenge select
+  - Esc / Start opens a pause menu: Resume, Restart, Settings, Leave,
+    Quit
+  - Settings page in the metal style, applies instantly
+  - F1 is the developer page
+- **R / Y** resets the car; **⌘R / F5** restarts the race.
+
+Owner's latest playtest (Mac, build 1333967), still open:
+
+1. **Wrong-looking textures** (shelves, dinosaur, car). Root cause found:
+   the texture V flip. The converter flips V for the whole world and not
+   for the car. `SSRC_PICK` shows the shelf rows use the right shaders
+   (ToyBox007 = race track), but the port shows the other half of the
+   texture. The dinosaur's swatch texture "D" is likewise sampled in the
+   wrong half (black instead of red). Turning the flip off for the whole
+   world made the matched views worse (`compare_views.py`), so the flip
+   differs per mesh or texture. Investigate the W3D CLOD texture-coordinate
+   decode and shader texture transforms. `SSRC_IMPORT_DEBUG=1` and
+   `SSRC_IMPORT_NOFLIP=1` are converter debug switches.
+2. **The arrow shakes at speed, and the chassis wobbles against the
+   wheels.** Likely cause: the wheel visuals and the arrow update on
+   logic ticks without interpolation. The owner's fps also dropped from
+   92 to 48 after the 40 fps cadence change (320 physics ticks/s). Profile
+   it; consider Physics Precision Standard as the default.
+3. Turning is slow at high speed, and the car bounces on angled surfaces
+   (skate ramp, curved walls). Use the routes harness.
+4. Enhanced lighting shows odd shadows.
+5. Switching upscalers froze the Mac (hidden now).
+
+`scripts/reference/compare_views.py` puts both games' cars at 12 matched
+spots and compares screenshots (needs the Wine reference).
+
 ## Known issues
 
 From the owner's first Mac playtest (2026-10-10), highest impact first:

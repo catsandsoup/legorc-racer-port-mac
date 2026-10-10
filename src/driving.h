@@ -25,7 +25,9 @@ namespace ssrc {
 class SupersonicGame;
 class SoundSystem;
 
-enum class ModeId { FREE = 0, CHECKPOINT, STUNT, SCAVENGER, SUPERSONIC, COUNT };
+// The five original challenges, then Free Roam (not in the original: no
+// timer, no goals, always unlocked).
+enum class ModeId { FREE = 0, CHECKPOINT, STUNT, SCAVENGER, SUPERSONIC, FREE_ROAM, COUNT };
 const char *mode_script_name(ModeId id);
 
 class DrivingSession;
@@ -37,6 +39,7 @@ public:
 	~Hud();
 	void set_timer(const String &mmss);
 	void show_timer(bool on);
+	void show_points(bool on);
 	void setup_points(bool with_goal);
 	void set_points(const String &text, bool goal_reached);
 	void set_message(const String &text); // lines: 24 / 18 / 12 pt

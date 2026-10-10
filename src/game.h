@@ -5,6 +5,7 @@
 #pragma once
 
 #include "driving.h"
+#include "menu_ui.h"
 #include "settings.h"
 
 #include <godot_cpp/classes/canvas_layer.hpp>
@@ -60,7 +61,7 @@ private:
 	enum class Screen { NONE, IMPORT, TITLE, SELECT, HELP, LOADING, DRIVING };
 	Screen screen = Screen::NONE;
 	Settings prefs;
-	bool unlocked[int(ModeId::COUNT)] = { true, false, false, false, false };
+	bool unlocked[int(ModeId::COUNT)] = { true, false, false, false, false, true };
 	bool ctrl_unlock_all = false;
 	bool muted = false;
 	SoundSystem *sound = nullptr;
@@ -75,7 +76,24 @@ private:
 	Control *stage = nullptr; // 640x480, centred
 	ColorRect *fader = nullptr;
 	Label *fps_label = nullptr;
-	PanelContainer *settings_panel = nullptr;
+	PanelContainer *settings_panel = nullptr; // developer page (F1)
+	// Player menus (menu_ui.h): drawn above the stage, controller first.
+	Control *menu_layer = nullptr;
+	MetalMenu *title_bar = nullptr;
+	MetalMenu *pause_menu = nullptr;
+	MetalMenu *settings_menu = nullptr;
+	std::vector<MetalMenu *> menus_to_free;
+	std::function<void()> settings_return;
+	InputDevice device = InputDevice::KEYBOARD;
+	bool mouse_mode = true;
+	int select_focus = 0;
+	void close_menu(MetalMenu *&m);
+	void open_title_bar();
+	void open_pause();
+	void close_pause();
+	void open_settings(std::function<void()> on_return);
+	void close_settings();
+	void track_device(const Ref<InputEvent> &event);
 	struct Button4 {
 		TextureRect *rect = nullptr;
 		String base;
