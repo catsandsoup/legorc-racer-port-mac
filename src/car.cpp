@@ -309,6 +309,14 @@ void Car::reset_to(const Vector3 &pos_d, bool reset_rotation) {
 	read_state();
 }
 
+void Car::spawn_at(const DXform &x) {
+	body->set_global_transform(dxform_to_godot(x));
+	body->set_linear_velocity(Vector3());
+	body->set_angular_velocity(Vector3());
+	body->reset_physics_interpolation();
+	read_state();
+}
+
 void Car::teleport_up(real_t dz) {
 	reset_to(xform.origin + Vector3(0, 0, dz), true);
 }

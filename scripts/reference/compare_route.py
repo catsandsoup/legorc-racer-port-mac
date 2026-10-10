@@ -200,8 +200,12 @@ def run_original(route, orig_dir, out, runs):
 
 # ---------------------------------------------------------------- port
 
-def run_port(route, godot, data, out):
+def run_port(route, godot, data, out, tuning=None):
     home = tempfile.mkdtemp()
+    if tuning:  # a tuning.json mod for this run (Linux user folder)
+        mod = Path(home) / ".local/share/Supersonic RC/mods/zz_compare"
+        mod.mkdir(parents=True)
+        shutil.copy(tuning, mod / "tuning.json")
     settle = float(route.get("settle", 1.0))
     spawn = route.get("spawn", START)
     shots = [float(s) + settle for s in route.get("shots", [])]
@@ -219,8 +223,11 @@ def run_port(route, godot, data, out):
                SSRC_TEST_OUT=str(out / "port_"),
                SSRC_TEST_TELEMETRY=str(out / "port_raw.csv"),
                SSRC_TEST_QUIT=str(end + 0.3))
-    cmd = ["xvfb-run", "-a", "-s", "-screen 0 1280x960x24", str(godot), "--path", str(REPO / "game"),
-           "--rendering-driver", "opengl3", "--resolution", "960x720"]
+    if shots:
+        cmd = ["xvfb-run", "-a", "-s", "-screen 0 1280x960x24", str(godot), "--path", str(REPO / "game"),
+               "--rendering-driver", "opengl3", "--resolution", "960x720"]
+    else:  # telemetry only: no rendering needed
+        cmd = [str(godot), "--headless", "--path", str(REPO / "game")]
     with open(out / "port.log", "w") as log:
         subprocess.run(cmd, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=600, check=False)
     shutil.rmtree(home, ignore_errors=True)
@@ -269,6 +276,16 @@ def derived(a, ts):
         "pitch": np.degrees(np.arcsin(np.clip(yz, -1, 1))),
         "roll": np.degrees(np.arcsin(np.clip(xz, -1, 1))),
     }
+
+
+def roll_period(roll, dt=0.05):
+    """Mean period of the roll wobble: zero crossings of roll minus its
+    1 s moving average."""
+    k = int(1.0 / dt)
+    base = np.convolve(roll, np.ones(k) / k, mode="same")
+    r = roll - base
+    z = np.nonzero(np.diff(np.sign(r[k:-k])) != 0)[0]
+    return float(2 * np.mean(np.diff(z)) * dt) if len(z) > 2 else float("nan")
 
 
 def plot(out, ts, origs, port):
@@ -330,6 +347,7 @@ def compare(route, out):
         lines.append(stat("roll", lambda v: np.max(np.abs(v))).replace("| roll", "| max roll (deg)"))
         lines.append(stat("pitch", lambda v: np.max(np.abs(v))).replace("| pitch", "| max pitch (deg)"))
         lines.append(stat("z", np.max).replace("| z", "| max height (in)"))
+        lines.append(stat("roll", roll_period).replace("| roll", "| roll wobble period (s)"))
         lines.append(stat("heading", lambda v: v[-1] - v[0]).replace("| heading", "| heading change (deg)"))
         if port:
             err = np.linalg.norm(np.array([port["x"], port["y"], port["z"]]) - mean_xy, axis=0)
@@ -369,6 +387,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--only", choices=["port", "orig"])
     ap.add_argument("--orig-runs", type=int)
+    ap.add_argument("--tuning", help="tuning.json to apply to the port for this run")
     a = ap.parse_args()
     route = json.loads(Path(a.route).read_text())
     route.setdefault("name", Path(a.route).stem)
@@ -381,7 +400,7 @@ def main():
     if a.only != "orig":
         if not (a.godot and a.data):
             sys.exit("--godot and --data are required to run the port")
-        run_port(route, a.godot, a.data, out)
+        run_port(route, a.godot, a.data, out, a.tuning)
     compare(route, out)
     print(f"output: {out}")
 

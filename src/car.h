@@ -82,6 +82,7 @@ public:
 	void after_physics_contacts();
 	void stop_driving();
 	void shutdown_sound();
+	void spawn_at(const DXform &x); // test hook: place at rest
 	void reset_to(const Vector3 &pos_d, bool reset_rotation);
 	void teleport_up(real_t dz);
 

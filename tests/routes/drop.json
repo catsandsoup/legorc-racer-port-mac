@@ -1,0 +1,7 @@
+{"mode": 0,
+ "spawn": [3790.17, -5696.19, 398.66, 0],
+ "settle": 0,
+ "input": "",
+ "duration": 3,
+ "orig_runs": 3,
+ "note": "Drop test: released 60 in above rest height with no input. Free fall measures gravity; the bounce measures spring stiffness (frequency) and damping (decay)."}

@@ -1317,4 +1317,11 @@ Dictionary DrivingSession::get_car_state() const {
 	return d;
 }
 
+
+void DrivingSession::test_spawn(const Vector3 &pos, real_t heading_deg) {
+	if (car) {
+		car->spawn_at(DXform{ rot_z_deg(heading_deg), pos });
+	}
+}
+
 } // namespace ssrc

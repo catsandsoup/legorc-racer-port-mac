@@ -10,6 +10,7 @@ extends Node
 
 var enabled := false
 var t_drive := -1.0
+var sim_start := -1.0
 var t_total := 0.0
 var shots: Array = []
 var inputs: Array = []
@@ -96,8 +97,27 @@ func _process(delta: float) -> void:
 			print("[test] timeout before driving")
 			get_tree().quit(2)
 		return
-	t_drive += real_dt
-	if telemetry != null and game.get_session() != null:
+	while shots.size() > 0 and t_drive >= shots[0]:
+		shot("drive_%05.2f" % shots.pop_front())
+
+# Inputs, telemetry and the test clock run on the game's own logic ticks
+# (simulated time / 2.25 at 1.00x), so port runs repeat exactly whatever
+# the frame rate.
+func _physics_process(_delta: float) -> void:
+	if t_drive < 0 or game == null or game.get_session() == null:
+		return
+	var st: Dictionary = game.get_session().get_car_state()
+	if st.is_empty():
+		return
+	if sim_start < 0:
+		sim_start = st.sim_time
+		# SSRC_TEST_SPAWN: place the car again on this tick, so time 0 is
+		# the moment of spawning (as when teleporting the original's car).
+		var sp = OS.get_environment("SSRC_TEST_SPAWN").split_floats(",")
+		if sp.size() >= 3:
+			game.get_session().test_spawn(Vector3(sp[0], sp[1], sp[2]), sp[3] if sp.size() > 3 else 0.0)
+	t_drive = (st.sim_time - sim_start) / 2.25
+	if telemetry != null:
 		log_state()
 	for i in inputs:
 		var on: bool = t_drive >= i[1] and t_drive < i[2]
@@ -106,8 +126,6 @@ func _process(delta: float) -> void:
 		elif not on and i[3]:
 			Input.action_release(i[0])
 		i[3] = on
-	while shots.size() > 0 and t_drive >= shots[0]:
-		shot("drive_%05.2f" % shots.pop_front())
 	if t_drive > quit_after:
 		if telemetry != null:
 			telemetry.close()

@@ -196,10 +196,14 @@ public:
 	// Test hook: the car's physics state in Director units (inches,
 	// Z up), comparable with the original's Havok state read from memory.
 	Dictionary get_car_state() const;
+	// Test hook: put the car at rest at pos (Director units), heading
+	// about +Z in degrees (0 faces +Y).
+	void test_spawn(const Vector3 &pos, real_t heading_deg);
 
 protected:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("get_car_state"), &DrivingSession::get_car_state);
+		ClassDB::bind_method(D_METHOD("test_spawn", "pos", "heading_deg"), &DrivingSession::test_spawn);
 	}
 
 private:
