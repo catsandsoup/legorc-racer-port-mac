@@ -128,26 +128,43 @@ with the test variables below.
 
 ## Comparing against the original automatically
 
-`scripts/reference/compare_route.py` drives the original under Wine and
-the port with the same route (`tests/routes/*.json`), captures both at the
-same moments, and writes side-by-side sheets with a difference score to
-`local/reference/runs/` (git-ignored).
+The original's car state can be read from, and written into, its memory
+under Wine (`scripts/reference/orig_memory.py`). The layout is documented
+in the file. So the original gives physics telemetry, and its car can be
+spawned anywhere at any heading.
+
+`scripts/reference/compare_route.py` runs a short route
+(`tests/routes/*.json`):
+
+- from the same spawn in both games
+- the original several times, to measure its own run-to-run spread
+
+It writes these to `local/reference/runs/` (git-ignored):
+
+- `report.md`: top speed, max roll and pitch, height, heading change, and
+  the first moment the port leaves the original's spread
+- `plot.png`: path, height, speed, roll, pitch and heading for every run
+- side-by-side screenshot sheets
 
 ```sh
 WINEPREFIX=/path/to/wineprefix scripts/reference/compare_route.py tests/routes/hard_left.json \
   --orig-dir /path/to/original --godot /path/to/godot --data /path/to/converted
 ```
 
-How to read the scores:
-
-- About 8–13 means the same view, with small lighting or timing differences.
-- Above 25 means the two games have diverged.
-- Timing is real-time in both, so expect a few frames of jitter.
+The port side uses `SSRC_TEST_SPAWN` and `SSRC_TEST_TELEMETRY`.
 
 `scripts/test-collision.sh` checks that the collision world is solid.
 
 Add a route for every bug before fixing it, and re-run all routes after
 every physics or rendering change.
+
+First result (`hard_left`): acceleration matches the original. The
+suspension doesn't:
+
+- roll and bounce oscillate about 1.5× slower (√2.25, the time scale) and
+  wider
+- pitch reaches 20° against the original's 6°
+- the car turns 287° against 198° (spread 179–236°)
 
 ## Developer and test variables (never for players)
 
@@ -164,6 +181,8 @@ every physics or rendering change.
 | `SSRC_DEBUG_CAR=N` | Print the car's physics state for N ticks |
 | `SSRC_PICK="x,y;…"` | Print the model and shader under stage points at tick 200 |
 | `SSRC_COLLISION_PROBE=1` | Sweep a car-sized box at eight known surfaces, print PASS/FAIL, quit (used by `scripts/test-collision.sh`) |
+| `SSRC_TEST_SPAWN=x,y,z[,heading]` | Spawn the car there (Director units; heading 0 faces +Y) |
+| `SSRC_TEST_TELEMETRY=<csv>` | Write the car's state every frame |
 | `SSRC_LM_MODE` | Lightmap blend experiments (0 is correct; leftover from calibration) |
 
 For a fresh first-run test, set `HOME` to an empty folder that contains
@@ -187,8 +206,10 @@ For a fresh first-run test, set `HOME` to an empty folder that contains
    - the macOS menu bar becomes a convenience
 
    Run both critics.
-3. Level 0 in `docs/ROADMAP.md`: release guard, keep the original files,
+3. **Free Roam** (the owner's major gameplay goal, `docs/ROADMAP.md`): no
+   timer, drive anywhere, quit from pause.
+4. Level 0 in `docs/ROADMAP.md`: release guard, keep the original files,
    verify the prize modes against Wine.
-4. Analogue trigger pedals (opt-in), glyphs and rumble, then DualSense
+5. Analogue trigger pedals (opt-in), glyphs and rumble, then DualSense
    adaptive triggers through GameController.
-5. The Car Setup, Events, Mods and Developer pages.
+6. The Car Setup, Events, Mods and Developer pages.

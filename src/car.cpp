@@ -6,6 +6,7 @@
 #include "sound.h"
 
 #include <godot_cpp/classes/collision_shape3d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/convex_polygon_shape3d.hpp>
 #include <godot_cpp/classes/physics_direct_body_state3d.hpp>
 #include <godot_cpp/classes/physics_material.hpp>
@@ -94,6 +95,16 @@ Car::Car(DrivingSession *p_session, Node3D *parent) :
 
 	xform.basis = Basis();
 	xform.origin = Vector3(t.start_x, t.start_y, t.start_z);
+	// Test hook: SSRC_TEST_SPAWN="x,y,z[,heading_deg]" in Director units
+	// (heading turns about +Z; 0 faces +Y like the original start).
+	String spawn = OS::get_singleton()->get_environment("SSRC_TEST_SPAWN");
+	if (!spawn.is_empty()) {
+		PackedFloat64Array v = spawn.split_floats(",");
+		if (v.size() >= 3) {
+			xform.origin = Vector3(v[0], v[1], v[2]);
+			xform.basis = rot_z_deg(v.size() >= 4 ? v[3] : 0.0);
+		}
+	}
 	body->set_global_transform(dxform_to_godot(xform));
 
 	// --- visuals: holypolycrap cloned as "car2" under the physics model ---

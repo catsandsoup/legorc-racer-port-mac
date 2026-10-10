@@ -5,6 +5,7 @@
 #   SSRC_TEST_SHOTS=0.5,2,5           screenshot times (seconds after driving starts; t<0 = menus)
 #   SSRC_TEST_OUT=/path/prefix        screenshot path prefix
 #   SSRC_TEST_QUIT=8                  quit after N seconds of driving
+#   SSRC_TEST_TELEMETRY=/path.csv     write the car state every frame (Director units)
 extends Node
 
 var enabled := false
@@ -17,6 +18,7 @@ var out := "/tmp/ssrc"
 var game: Node
 var flow: Array = []
 var flow_t := 0.0
+var telemetry: FileAccess
 
 func _ready() -> void:
 	enabled = OS.get_environment("SSRC_TEST") != ""
@@ -33,6 +35,19 @@ func _ready() -> void:
 		var r = p[1].split("-")
 		inputs.append([p[0], float(r[0]), float(r[1]), false])
 	flow = Array(OS.get_environment("SSRC_TEST_FLOW").split(",", false))
+	if OS.get_environment("SSRC_TEST_TELEMETRY") != "":
+		telemetry = FileAccess.open(OS.get_environment("SSRC_TEST_TELEMETRY"), FileAccess.WRITE)
+		telemetry.store_line("t,sim,px,py,pz,cx,cy,cz,vx,vy,vz,wx,wy,wz,xx,xy,xz,yx,yy,yz,zx,zy,zz")
+
+func log_state() -> void:
+	var st: Dictionary = game.get_session().get_car_state()
+	if st.is_empty():
+		return
+	var row := [t_drive, st.sim_time]
+	for k in ["pos", "com", "vel", "angvel", "x_axis", "y_axis", "z_axis"]:
+		var v: Vector3 = st[k]
+		row.append_array([v.x, v.y, v.z])
+	telemetry.store_line(",".join(row.map(func(x): return "%.5f" % x)))
 
 func shot(tag: String) -> void:
 	var img := get_viewport().get_texture().get_image()
@@ -82,6 +97,8 @@ func _process(delta: float) -> void:
 			get_tree().quit(2)
 		return
 	t_drive += real_dt
+	if telemetry != null and game.get_session() != null:
+		log_state()
 	for i in inputs:
 		var on: bool = t_drive >= i[1] and t_drive < i[2]
 		if on and not i[3]:
@@ -92,5 +109,7 @@ func _process(delta: float) -> void:
 	while shots.size() > 0 and t_drive >= shots[0]:
 		shot("drive_%05.2f" % shots.pop_front())
 	if t_drive > quit_after:
+		if telemetry != null:
+			telemetry.close()
 		print("[test] done")
 		get_tree().quit(0)

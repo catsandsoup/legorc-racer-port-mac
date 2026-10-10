@@ -193,8 +193,14 @@ public:
 	void _process(double delta) override;
 	void _exit_tree() override;
 
+	// Test hook: the car's physics state in Director units (inches,
+	// Z up), comparable with the original's Havok state read from memory.
+	Dictionary get_car_state() const;
+
 protected:
-	static void _bind_methods() {}
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("get_car_state"), &DrivingSession::get_car_state);
+	}
 
 private:
 	SupersonicGame *game = nullptr;

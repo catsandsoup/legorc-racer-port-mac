@@ -1299,4 +1299,22 @@ void DrivingSession::run_collision_probe() {
 	get_tree()->quit(failed == 0 ? 0 : 1);
 }
 
+
+Dictionary DrivingSession::get_car_state() const {
+	Dictionary d;
+	if (!car) {
+		return d;
+	}
+	const DXform &x = car->xform;
+	d["pos"] = x.origin;
+	d["com"] = x.xform(car->center_of_mass_local);
+	d["vel"] = car->linear_velocity;
+	d["angvel"] = car->angular_velocity;
+	d["x_axis"] = x.x_axis();
+	d["y_axis"] = x.y_axis();
+	d["z_axis"] = x.z_axis();
+	d["sim_time"] = sim_seconds;
+	return d;
+}
+
 } // namespace ssrc

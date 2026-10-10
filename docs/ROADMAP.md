@@ -30,6 +30,12 @@ Facts to plan with:
 | Pause menu | The original has none (Esc quits the race). Add one only as an opt-in hook that opens the same settings model |
 | Controller-driven menus | Level select and settings need full gamepad focus navigation and button glyphs |
 
+## Owner's major gameplay goal
+
+| Goal | How |
+|---|---|
+| **Free Roam**: drive anywhere with no timer, checkpoints or score, and quit whenever you like | A sixth entry on the challenge select, always unlocked, added alongside the original five, which stay untouched. Reuses `GameMode` with no timer and no checkpoints. Pause → Quit returns to the challenge select. Needs the pause menu first (Level 0). Prove it by controller: select it, drive, pause, quit. |
+
 ## Level 1: hooks on systems that already exist (days each)
 
 | Goal | How |
