@@ -29,7 +29,7 @@ for what's next, and `docs/NEXT_SESSION_PROMPT.md` for the brief to start a new 
 | Developer page (F1) | Plain panel with every option | — |
 | Free Roam | **Done (Linux)**: no timer, goals or arrow; pause and leave | Screenshots |
 | Pause | **Done**: freezes the race and its clock | Paused screenshots, car stationary |
-| Textures | **Fixed** half-tile UV offset; shelves and dinosaur match the original | `compare_views.py`: scores 6.6–10.8, down from 9–20 |
+| Textures | **Fixed**: half-tile UV offset, and the car now flipped like the world. Shelves, dinosaur and car match the original | `compare_views.py`: all 12 views score 4.0–7.5, down from 9–20 |
 | Mods (assets, `tuning.json`, GDScript, GDExtension) | Asset, tuning and GDScript mods proven | `examples/mods/hello-gdscript` printed live speed in a run |
 | macOS build | **Green** on `macos-15` (run 6, commit 5e69484). Builds the converter and arm64 library, exports with Godot's universal template, thins it to arm64, ad-hoc signs, and a headless launch inside the packaged app loads the game library and runs the bundled converter. Download: the `Supersonic-RC-macOS-AppleSilicon` artifact on the latest run | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
 | macOS app on a real Mac | **Runs** (owner's first playtest, 2026-10-10): title, challenge select and races work on Metal. Bugs below | Owner's screenshots |
@@ -65,11 +65,9 @@ latest commit is the next download.
 
 **Next, in order:**
 
-1. **Car textures.** The car scene is converted without the V flip
-   (`importer/src/movie.rs`, `flip_v = file != "car"`). With the +0.5
-   shift now in, try the flip on for the car as well. Check with
-   `compare_views.py`: the original's car rear is dark with red lights at
-   the sides.
+1. **Done: car textures.** With the +0.5 shift, the car needs the V flip
+   too. Matched views score 4.0–7.5 everywhere. The README showcase is
+   done as well.
 2. **The arrow shakes at speed, and the chassis wobbles against the
    wheels.** The wheel visuals and the arrow update on logic ticks
    without interpolation; smooth them like the car body. The owner's fps

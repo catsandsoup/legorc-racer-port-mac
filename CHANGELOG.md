@@ -7,9 +7,10 @@ Project owner: catsandsoup.
 ### Fixed (from the owner's Mac playtests)
 - **Textures:** every texture coordinate from the converter was half a
   tile off. The shelf boxes showed the wrong half of their pictures and the
-  dinosaur came out red and black instead of red. They now match the
-  original (matched-view scores 6.6–10.8, down from 9–20). Re-import your
-  game files to get the fix.
+  dinosaur came out red and black instead of red. The car's textures were
+  also flipped the wrong way. All now match the original (matched-view
+  scores 4.0–7.5, down from 9–20). Re-import your game files to get the
+  fix.
 - The pause menu now freezes the race and its timer.
 - **Timing now matches the original.** The movie runs at 40 frames a second
   (its config frame rate), and each frame is split into two physics updates

@@ -98,5 +98,6 @@ behind the work. Owner: catsandsoup. The newest session comes first.
 | New UI: title bar, controller challenge select, pause, Settings | Done (Linux screenshots); not yet seen on the owner's Mac. The pause now really stops the race and its clock |
 | UX and style critic pass on the new UI | **To do** |
 | Texture coordinates (shelves, dinosaur) | **Done**: the CLOD decoder's UVs were half a tile low; the converter now shifts them by +0.5 (not the lightmap UVs). Matched views went from scores 9–20 to 6.6–10.8; shelves and dinosaur match the original |
-| Car textures | **Next**: the car scene is converted without the V flip (`importer/src/movie.rs`: `flip_v = file != "car"`). With the +0.5 shift in place, try the flip on for the car too, then re-run `compare_views.py` |
+| Car textures | **Done**: with the +0.5 shift, the car needs the same V flip as the world (`importer/src/movie.rs`). The car's rear now matches the original (dark, red side lights). All 12 matched views score 4.0–7.5 |
+| README showcase (menus, why replaced, modding for people and agents, call for ports, co-op) | **Done** |
 | Arrow and wheel jitter; fps drop from 92 to 48 | **To do** |
