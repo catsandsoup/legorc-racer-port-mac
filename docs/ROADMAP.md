@@ -36,6 +36,13 @@ Facts to plan with:
 |---|---|
 | **Free Roam**: drive anywhere with no timer, checkpoints or score, and quit whenever you like | A sixth entry on the challenge select, always unlocked, added alongside the original five, which stay untouched. Reuses `GameMode` with no timer and no checkpoints. Pause → Quit returns to the challenge select. Needs the pause menu first (Level 0). Prove it by controller: select it, drive, pause, quit. |
 
+## Owner's future goal: multiplayer
+
+| Goal | How |
+|---|---|
+| 2- or 4-player local co-op / "lounge" | Split screen with SubViewports and one `Car` per controller, plus car-to-car collision layers. The HUD scales per viewport. Free Roam first, then races |
+| Online play (maybe, later) | Needs a server, plus a privacy and licence review |
+
 ## Level 1: hooks on systems that already exist (days each)
 
 | Goal | How |

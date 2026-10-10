@@ -60,6 +60,24 @@ behind the work. Owner: catsandsoup. The newest session comes first.
    fell from 92 to 48, and the arrow and wheels jitter. Not fixed yet.
 7. Switching upscalers freezes the Mac build, so they are hidden.
 
+### The owner's latest requests (end of session 1)
+
+- **"The goal is a fun playable game, not a pure 1:1 copy."** Recreate
+  Director behaviour where it makes the game good; don't chase every
+  Director quirk.
+- **GitHub page** (README) must showcase:
+  - the new native menus and enhancements, why they exist, and why the
+    old menus were replaced (controller players couldn't use them)
+  - the modding capacity, easy for people and their agents to find
+  - a call for contributors to port it to Windows, Linux, mobile and
+    others ("I look forward to seeing how other people enhance this
+    work")
+- **The UI must respond to controller detection.** Button prompts already
+  switch between keyboard, Xbox and PlayStation. Extend this (glyphs,
+  hints) and say so in the README.
+- **Future goal:** 2- or 4-player local co-op ("lounge"), maybe online
+  later. Add to the roadmap.
+
 ### Task list at the end of session 1
 
 | Task | State |
@@ -79,5 +97,6 @@ behind the work. Owner: catsandsoup. The newest session comes first.
 | Quick wins (R reset, restart, live lighting, help once, physics labels) | Done: R verified by telemetry; live lighting seen in Settings; help-once and restart not yet screenshotted |
 | New UI: title bar, controller challenge select, pause, Settings | Done (Linux screenshots); not yet seen on the owner's Mac. The pause now really stops the race and its clock |
 | UX and style critic pass on the new UI | **To do** |
-| Texture V flip (shelves, dinosaur, car) | **In progress** |
+| Texture coordinates (shelves, dinosaur) | **Done**: the CLOD decoder's UVs were half a tile low; the converter now shifts them by +0.5 (not the lightmap UVs). Matched views went from scores 9–20 to 6.6–10.8; shelves and dinosaur match the original |
+| Car textures | **Next**: the car scene is converted without the V flip (`importer/src/movie.rs`: `flip_v = file != "car"`). With the +0.5 shift in place, try the flip on for the car too, then re-run `compare_views.py` |
 | Arrow and wheel jitter; fps drop from 92 to 48 | **To do** |

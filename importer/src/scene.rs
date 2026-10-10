@@ -51,11 +51,21 @@ pub struct SceneReport {
     pub lightmap_mismatches: Vec<String>,
 }
 
+/// The CLOD decoder's texture coordinates come out centred on 0 (each one
+/// half a tile low in u and v) compared with Director's own
+/// textureCoordinateList, which is what the lightmap UV literal holds. Shift
+/// by half a tile, then flip V for glTF where the scene needs it.
+/// (Checked against the original under Wine: shelf boxes, dinosaur.)
 fn flip_uv(uv: &[f32; 2], flip: bool) -> [f32; 2] {
+    flip_uv_shift(uv, flip, if std::env::var("SSRC_IMPORT_NO_UV_SHIFT").is_ok() { 0.0 } else { 0.5 })
+}
+
+fn flip_uv_shift(uv: &[f32; 2], flip: bool, shift: f32) -> [f32; 2] {
+    let (u, v) = (uv[0] + shift, uv[1] + shift);
     if flip {
-        [uv[0], 1.0 - uv[1]]
+        [u, 1.0 - v]
     } else {
-        *uv
+        [u, v]
     }
 }
 
@@ -129,6 +139,10 @@ pub fn convert(scene: &W3dScene, out_dir: &Path, glb_name: &str, opts: &SceneOpt
     names.sort();
     for name in names {
         let data = scene.texture_images.iter().find(|(k, _)| k.to_string() == name).map(|(_, v)| v).unwrap();
+        if std::env::var("SSRC_IMPORT_DEBUG").is_ok() {
+            let kind = if data.len() > 2 && data[0] == 0xFF && data[1] == 0xD8 { "jpeg" } else if data.len() > 2 && data[0] == 0x89 { "png" } else { "other" };
+            eprintln!("[texture] {} {} {} bytes", name, kind, data.len());
+        }
         if let Some(img) = decode_w3d_texture(data) {
             let file = format!("{}.png", sanitize(&name));
             img.save_png(&tex_dir.join(&file))?;
@@ -217,7 +231,8 @@ pub fn convert(scene: &W3dScene, out_dir: &Path, glb_name: &str, opts: &SceneOpt
                     let uv0 = m.tex_coords.first().filter(|t| t.len() == m.positions.len()).map(|t| t.iter().map(|uv| flip_uv(uv, opts.flip_v)).collect());
                     let uv1 = lm.and_then(|lm| lm.uvs.get(i)).and_then(|uvs| {
                         if uvs.len() == m.positions.len() {
-                            Some(uvs.iter().map(|uv| flip_uv(uv, true)).collect::<Vec<_>>())
+                            // Lightmap UVs come from Director's own list: no shift.
+                            Some(uvs.iter().map(|uv| flip_uv_shift(uv, true, 0.0)).collect::<Vec<_>>())
                         } else {
                             report.lightmap_mismatches.push(format!("{name} mesh {i}: {} uvs vs {} verts", uvs.len(), m.positions.len()));
                             None
