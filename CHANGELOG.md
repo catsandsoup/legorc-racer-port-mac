@@ -19,7 +19,12 @@ Project owner: catsandsoup.
   race. Back/View and Esc still leave the race. A, B and the D-pad work
   in the panel: Godot's `ui_accept`/`ui_cancel` had no joypad buttons.
 - Closing the panel with Esc during a race no longer also leaves the race.
-- Test driver: `joy:<button>` flow steps.
+- Any connected controller now drives. Joypad bindings were made on
+  device 0 only, so a second controller (or one that reconnected with a
+  new ID) was ignored. Godot 4.7.2 only moves code-made keyboard and mouse
+  bindings to their own device IDs.
+- Test driver: `joy:<button>` flow steps, `SSRC_TEST_TAPS` for taps during
+  a race, `SSRC_TEST_JOY_DEVICE`, and a game-speed check at the end of a run.
 
 ## Unreleased: 0.1.0 (first port)
 

@@ -22,6 +22,7 @@ var flow: Array = []
 var flow_t := 0.0
 var taps: Array = []
 var phys0 := 0
+var joy_device := int(OS.get_environment("SSRC_TEST_JOY_DEVICE")) if OS.get_environment("SSRC_TEST_JOY_DEVICE") != "" else 0
 const JOY_BUTTONS := {
 	"a": JOY_BUTTON_A, "b": JOY_BUTTON_B, "x": JOY_BUTTON_X, "y": JOY_BUTTON_Y,
 	"start": JOY_BUTTON_START, "back": JOY_BUTTON_BACK,
@@ -49,6 +50,7 @@ func tap(what: String) -> void:
 # Press, hold for a few frames (so is_action_just_pressed sees it), release.
 func tap_joy(button: int) -> void:
 	var ev := InputEventJoypadButton.new()
+	ev.device = joy_device
 	ev.button_index = button
 	ev.pressed = true
 	Input.parse_input_event(ev)

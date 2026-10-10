@@ -120,9 +120,16 @@ static void add_key(const StringName &action, Key k) {
 	InputMap::get_singleton()->action_add_event(action, e);
 }
 
+// Joypad events made in code default to device 0, and InputMap only
+// normalizes keyboard and mouse events (Godot 4.7.2 core/input/input_map.cpp,
+// action_add_event). Device -1 (InputMap::ALL_DEVICES) lets any connected
+// controller drive, not just the first one.
+static constexpr int ANY_JOYPAD = -1;
+
 static void add_joy_button(const StringName &action, JoyButton b) {
 	Ref<InputEventJoypadButton> e;
 	e.instantiate();
+	e->set_device(ANY_JOYPAD);
 	e->set_button_index(b);
 	InputMap::get_singleton()->action_add_event(action, e);
 }
@@ -130,6 +137,7 @@ static void add_joy_button(const StringName &action, JoyButton b) {
 static void add_joy_axis(const StringName &action, JoyAxis a, real_t dir) {
 	Ref<InputEventJoypadMotion> e;
 	e.instantiate();
+	e->set_device(ANY_JOYPAD);
 	e->set_axis(a);
 	e->set_axis_value(dir);
 	InputMap::get_singleton()->action_add_event(action, e);
