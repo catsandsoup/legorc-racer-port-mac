@@ -1,0 +1,4 @@
+{"mode": 0,
+ "input": "accelerate:0-7,steer_right:2-4.5",
+ "shots": [1, 2.5, 3.5, 4.5, 5.5, 7],
+ "note": "Hard right turn at speed: the mirror of hard_left."}

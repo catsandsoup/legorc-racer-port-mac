@@ -1,0 +1,4 @@
+{"mode": 0,
+ "input": "accelerate:0-4.5",
+ "shots": [0.5, 1.5, 3, 4.5, 6],
+ "note": "Calibration: full throttle straight from the start for 4.5 s, then coast. Matched the original in session 1."}

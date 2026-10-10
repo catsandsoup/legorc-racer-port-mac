@@ -69,16 +69,26 @@ From the owner's first Mac playtest (2026-10-10), highest impact first:
      change settings. ⌘Q now quits from anywhere, and ⌘⌃F or F11 toggles
      full screen.
    - The real fix is the pause menu and Settings milestone.
-5. The owner remembers the checkpoint arrow at the top of the screen. The
+5. **Handling: the car rolls and over-rotates in hard turns** (owner:
+   "boaty, it bounces and wobbles and the wheels clip the floor").
+   `tests/routes/hard_left.json` shows it against the original. The two
+   match until 2.5 s; by 4.5 s the port's car is rolled over and sliding
+   while the original stays flat. Coming down the slope beside the right
+   stairs, the port also pitches and its wheel loads go negative. Suspects:
+   - the inertia tensor (a plain box from the hull)
+   - the torque dividers
+   - the per-substep force re-application
+   - wheel lateral grip
+6. The owner remembers the checkpoint arrow at the top of the screen. The
    Wine capture shows it at the bottom centre, as the port draws it.
    Re-check under Wine before changing anything.
-6. A few textures on the car's rear fins don't match the original.
-7. Scavenger Hunt and Supersonic Challenge haven't been compared against
+7. A few textures on the car's rear fins don't match the original.
+8. Scavenger Hunt and Supersonic Challenge haven't been compared against
    the original. Under Wine the projector closed once while entering
    Scavenger Hunt.
-8. The controller is digital: triggers act as on/off at 30 %.
-9. There's no release guard script yet, only `.gitignore`.
-10. The original files aren't kept after import (only the converted data).
+9. The controller is digital: triggers act as on/off at 30 %.
+10. There's no release guard script yet, only `.gitignore`.
+11. The original files aren't kept after import (only the converted data).
 
 ## Layout
 
@@ -115,6 +125,29 @@ SSRC_DATA=/tmp/conv godot --path game --rendering-driver opengl3
 Headless screenshots go through
 `xvfb-run -a -s "-screen 0 1280x960x24" godot --path game --rendering-driver opengl3`
 with the test variables below.
+
+## Comparing against the original automatically
+
+`scripts/reference/compare_route.py` drives the original under Wine and
+the port with the same route (`tests/routes/*.json`), captures both at the
+same moments, and writes side-by-side sheets with a difference score to
+`local/reference/runs/` (git-ignored).
+
+```sh
+WINEPREFIX=/path/to/wineprefix scripts/reference/compare_route.py tests/routes/hard_left.json \
+  --orig-dir /path/to/original --godot /path/to/godot --data /path/to/converted
+```
+
+How to read the scores:
+
+- About 8–13 means the same view, with small lighting or timing differences.
+- Above 25 means the two games have diverged.
+- Timing is real-time in both, so expect a few frames of jitter.
+
+`scripts/test-collision.sh` checks that the collision world is solid.
+
+Add a route for every bug before fixing it, and re-run all routes after
+every physics or rendering change.
 
 ## Developer and test variables (never for players)
 

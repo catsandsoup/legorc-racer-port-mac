@@ -44,6 +44,7 @@ public:
 
 	// Mod API (also callable from GDScript mods).
 	Node *get_session() const { return session; }
+	bool is_driving() const { return screen == Screen::DRIVING; } // race visible, fades done
 	Dictionary get_tuning() const;
 	void reload_mods();
 

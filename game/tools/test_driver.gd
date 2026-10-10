@@ -47,7 +47,7 @@ func _process(delta: float) -> void:
 	t_total += real_dt
 	if t_drive < 0:
 		flow_t += real_dt
-		if game.get_session() != null:
+		if game.get_session() != null and game.is_driving():
 			t_drive = 0.0
 			print("[test] driving started at ", t_total)
 		elif flow.size() > 0 and flow_t > 2.5:

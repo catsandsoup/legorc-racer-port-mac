@@ -102,6 +102,7 @@ void SupersonicGame::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("go_select_level"), &SupersonicGame::go_select_level);
 	ClassDB::bind_method(D_METHOD("start_mode", "mode"), &SupersonicGame::start_mode);
 	ClassDB::bind_method(D_METHOD("get_session"), &SupersonicGame::get_session);
+	ClassDB::bind_method(D_METHOD("is_driving"), &SupersonicGame::is_driving);
 	ClassDB::bind_method(D_METHOD("get_tuning"), &SupersonicGame::get_tuning);
 	ClassDB::bind_method(D_METHOD("reload_mods"), &SupersonicGame::reload_mods);
 	ClassDB::bind_method(D_METHOD("on_native_menu", "tag"), &SupersonicGame::on_native_menu);
