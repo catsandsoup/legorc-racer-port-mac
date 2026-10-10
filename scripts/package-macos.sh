@@ -11,7 +11,7 @@ APP="$(find "$WORK" -maxdepth 1 -name '*.app' | head -1)"
 [ -d "$APP" ] || { echo "no .app in $EXPORT_ZIP"; exit 1; }
 
 # Godot ships only a universal template; keep the Apple silicon slice.
-MAIN="$APP/Contents/MacOS/$(defaults read "$APP/Contents/Info" CFBundleExecutable)"
+MAIN="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Contents/Info.plist")"
 if lipo -archs "$MAIN" | grep -q x86_64; then
   lipo -thin arm64 "$MAIN" -output "$MAIN.arm64" && mv "$MAIN.arm64" "$MAIN"
 fi
