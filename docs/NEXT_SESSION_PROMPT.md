@@ -37,7 +37,12 @@ As a modern gamer I want:
 
 Every gameplay change is opt-in and off by default, as the rules say.
 
-Follow "Next steps" in `HANDOFF.md`:
+Read `docs/SESSION_LOG.md` too: my decisions and the task list. My
+direction: **a fun, plug-and-play game, not a strict 1:1 copy of
+Director.**
+
+Follow "Session 1 end state" in `HANDOFF.md`. Before that list, the
+general order was:
 
 1. First, the baseline against the original under Wine: every model and
    texture, and driving every surface. Fix the bugs from my playtest.

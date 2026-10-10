@@ -22,11 +22,14 @@ for what's next, and `docs/NEXT_SESSION_PROMPT.md` for the brief to start a new 
 | Boot: title, level select, help, loading, driving | Done | Screenshots from the exported Linux build, run from a clean user folder |
 | First launch, auto-import from Downloads | Done (Linux) | Clean `HOME` with `Supersonic_RC.zip` in Downloads reaches the title with no input |
 | Gameplay logic, 5 modes | Ported; Free Driving checked against the original | Checkpoint and stunt messages, timer, points seen on screen |
-| Physics feel | Matches the original in a timed run | Same car position at 1.5, 3 and 4.5 s of full throttle (Wine reference) |
+| Physics feel | Original 40 fps cadence; straight line and braking match; steering fitted (turn 128° vs 134°, roll 6.5° vs 5.6°) | Telemetry from the original's memory (`compare_route.py`) |
 | Original lighting | Matches | Floor, wall and ceiling within a few RGB levels of the original |
 | Widescreen, 4K, any frame rate | Done (Linux, OpenGL) | 1600×900 and 1280×960 screenshots; physics interpolation on |
-| Settings: macOS menu bar | Exists, but it's the wrong door: a controller player can't use it. Must become a convenience only | Owner's playtest |
-| Settings: in-game panel (F1) | Code written, not screenshotted | — |
+| Player menus (title bar, pause, Settings) | **Done (Linux)**: controller-first, metal style, instant apply; the menu bar is now only a convenience | Screenshots of the full journey, title to pause to Settings to resume |
+| Developer page (F1) | Plain panel with every option | — |
+| Free Roam | **Done (Linux)**: no timer, goals or arrow; pause and leave | Screenshots |
+| Pause | **Done**: freezes the race and its clock | Paused screenshots, car stationary |
+| Textures | **Fixed** half-tile UV offset; shelves and dinosaur match the original | `compare_views.py`: scores 6.6–10.8, down from 9–20 |
 | Mods (assets, `tuning.json`, GDScript, GDExtension) | Asset, tuning and GDScript mods proven | `examples/mods/hello-gdscript` printed live speed in a run |
 | macOS build | **Green** on `macos-15` (run 6, commit 5e69484). Builds the converter and arm64 library, exports with Godot's universal template, thins it to arm64, ad-hoc signs, and a headless launch inside the packaged app loads the game library and runs the bundled converter. Download: the `Supersonic-RC-macOS-AppleSilicon` artifact on the latest run | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
 | macOS app on a real Mac | **Runs** (owner's first playtest, 2026-10-10): title, challenge select and races work on Metal. Bugs below | Owner's screenshots |
@@ -37,43 +40,72 @@ Gatekeeper flow and controllers on macOS are unproven.
 
 ## Session 1 end state (read first)
 
-Pushed but NOT yet verified on screen. Run the walkthrough before anything
-else (test_driver `act:` flow steps and `SSRC_TEST_EVENTS` exist for it):
+Latest commit on `main` is where session 1 stopped. Also read
+`docs/SESSION_LOG.md`: the owner's decisions, latest requests and a task
+table marked done / in progress / to do.
 
-- **Free Roam:** `ModeId::FREE_ROAM`; a "Free Roam" pill on the title bar.
-- **New menus (`src/menu_ui.*`):**
+**The owner's direction:** a fun, plug-and-play game, not a strict 1:1
+copy of Director. Recreate behaviour where it makes the game good.
+
+Done and seen on screen (Linux):
+
+- **Free Roam:** `ModeId::FREE_ROAM`, from the title bar.
+- **Menus (`src/menu_ui.*`):**
   - title bar: Start / Free Roam / Settings
   - controller focus on the challenge select
-  - Esc / Start opens a pause menu: Resume, Restart, Settings, Leave,
-    Quit
-  - Settings page in the metal style, applies instantly
+  - Esc / Start opens pause: Resume, Restart, Settings, Leave, Quit
+  - Settings in the metal style, applies instantly
   - F1 is the developer page
-- **R / Y** resets the car; **⌘R / F5** restarts the race.
+- **Pause** freezes the race and its timer.
+- **R / Y** resets the car upright; **⌘R / F5** restarts the race.
+- **Texture coordinates:** the +0.5 shift in `importer/src/scene.rs`.
 
-Owner's latest playtest (Mac, build 1333967), still open:
+Not yet tried on the owner's Mac: everything above. The CI build of the
+latest commit is the next download.
 
-1. **Wrong-looking textures** (shelves, dinosaur, car). Root cause found:
-   the texture V flip. The converter flips V for the whole world and not
-   for the car. `SSRC_PICK` shows the shelf rows use the right shaders
-   (ToyBox007 = race track), but the port shows the other half of the
-   texture. The dinosaur's swatch texture "D" is likewise sampled in the
-   wrong half (black instead of red). Turning the flip off for the whole
-   world made the matched views worse (`compare_views.py`), so the flip
-   differs per mesh or texture. Investigate the W3D CLOD texture-coordinate
-   decode and shader texture transforms. `SSRC_IMPORT_DEBUG=1` and
-   `SSRC_IMPORT_NOFLIP=1` are converter debug switches.
+**Next, in order:**
+
+1. **Car textures.** The car scene is converted without the V flip
+   (`importer/src/movie.rs`, `flip_v = file != "car"`). With the +0.5
+   shift now in, try the flip on for the car as well. Check with
+   `compare_views.py`: the original's car rear is dark with red lights at
+   the sides.
 2. **The arrow shakes at speed, and the chassis wobbles against the
-   wheels.** Likely cause: the wheel visuals and the arrow update on
-   logic ticks without interpolation. The owner's fps also dropped from
-   92 to 48 after the 40 fps cadence change (320 physics ticks/s). Profile
-   it; consider Physics Precision Standard as the default.
-3. Turning is slow at high speed, and the car bounces on angled surfaces
-   (skate ramp, curved walls). Use the routes harness.
-4. Enhanced lighting shows odd shadows.
-5. Switching upscalers froze the Mac (hidden now).
+   wheels.** The wheel visuals and the arrow update on logic ticks
+   without interpolation; smooth them like the car body. The owner's fps
+   fell from 92 to 48 after the 40 fps cadence change (320 physics
+   ticks/s): profile it, and consider Physics Precision Standard
+   (160 ticks/s) as the default.
+3. **Handling the owner still feels:**
+   - turning is slow at high speed
+   - the car bounces on angled surfaces (skate ramp, curved walls)
+   - wheels visually clip into surfaces
+   - the car is flung on hitting the dinosaur's tail or other solid
+     objects (the owner saw this before the collision fix; re-check)
 
-`scripts/reference/compare_views.py` puts both games' cars at 12 matched
-spots and compares screenshots (needs the Wine reference).
+   Make it fun first, using the routes harness to measure.
+4. **README rewrite (owner's request):**
+   - showcase the new menus and enhancements, why they exist, and why the
+     old menus were replaced (controller players couldn't use them)
+   - make modding easy to find for people and their agents
+     (`docs/MODDING.md`)
+   - invite ports to Windows, Linux, mobile and others ("I look forward
+     to seeing how other people enhance this work")
+   - mention the co-op goal
+5. **Controller-aware UI everywhere.** Prompts already switch between
+   keyboard, Xbox and PlayStation. Add glyphs to the help screen and a
+   controls page.
+6. Enhanced lighting shows odd shadows. Upscaler switching froze the Mac,
+   so it's hidden in the player menu.
+7. **Layer 3 test robot** (whole-level invariant bot), then the UX and
+   style critic passes on the new UI.
+8. **Future:** 2–4 player local co-op (`docs/ROADMAP.md`).
+
+Tools: `scripts/reference/compare_route.py` (physics telemetry against the
+original), `compare_views.py` (matched screenshots), `orig_memory.py`
+(read and write the original's car state), `scripts/test-collision.sh`.
+Converter debug switches: `SSRC_IMPORT_DEBUG=1`, `SSRC_IMPORT_NOFLIP=1`,
+`SSRC_IMPORT_NO_UV_SHIFT=1`.
 
 ## Known issues
 
@@ -258,26 +290,4 @@ For a fresh first-run test, set `HOME` to an empty folder that contains
 
 ## Next steps (in order)
 
-1. **Baseline against the original under Wine** (`docs/PRODUCT_RULES.md`,
-   "The baseline"):
-   - compare every model and texture side by side
-   - drive the same scripted routes over every surface (floor, ramps,
-     stairs, shelves, upper floor, dinosaur, boxes)
-
-   Fix known issues 1–3 and 5 with before/after screenshots.
-2. **Controller-first menus, pause and Settings** in the game's own art
-   (`docs/DESIGN_PRINCIPLES.md` §4–6):
-   - the title, challenge select and help work by controller, with prompts
-     for the device in use
-   - Start, Options or Esc pauses
-   - a Settings item on the title and challenge select
-   - the macOS menu bar becomes a convenience
-
-   Run both critics.
-3. **Free Roam** (the owner's major gameplay goal, `docs/ROADMAP.md`): no
-   timer, drive anywhere, quit from pause.
-4. Level 0 in `docs/ROADMAP.md`: release guard, keep the original files,
-   verify the prize modes against Wine.
-5. Analogue trigger pedals (opt-in), glyphs and rumble, then DualSense
-   adaptive triggers through GameController.
-6. The Car Setup, Events, Mods and Developer pages.
+See "Session 1 end state" above; it is the current list.

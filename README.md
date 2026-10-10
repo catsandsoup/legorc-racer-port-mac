@@ -53,9 +53,10 @@ Use **Game → Re-import Game Files…** to convert them again.
 | Handbrake (power slide) | Space | B / Right shoulder |
 | Put the car back on its wheels | R | Y / △ |
 | Restart the race | ⌘R or F5 | |
-| Leave the race | Esc | Start |
+| Pause (Resume, Restart, Settings, Leave) | Esc | Start / Options |
 | Sound on/off | S | |
-| Settings | F1 or ⌘, | |
+| Settings | ⌘, (or from the title or pause menu) | from the title or pause menu |
+| Developer settings | F1 | |
 | Fullscreen | ⌃⌘F or F11 | |
 
 Hold **Ctrl** while the game starts to unlock all modes, as in the original,

@@ -5,6 +5,12 @@ Project owner: catsandsoup.
 ## Unreleased
 
 ### Fixed (from the owner's Mac playtests)
+- **Textures:** every texture coordinate from the converter was half a
+  tile off. The shelf boxes showed the wrong half of their pictures and the
+  dinosaur came out red and black instead of red. They now match the
+  original (matched-view scores 6.6–10.8, down from 9–20). Re-import your
+  game files to get the fix.
+- The pause menu now freezes the race and its timer.
 - **Timing now matches the original.** The movie runs at 40 frames a second
   (its config frame rate), and each frame is split into two physics updates
   of 12.5 and 37.5 ms of simulation. That's 2.0x real time; the port had
@@ -20,6 +26,20 @@ Project owner: catsandsoup.
 - ⌘Q quits even in full screen, where the menu bar is hidden.
 
 ### Added
+- **Free Roam:** drive anywhere, no timer, no goals; leave from the pause
+  menu.
+- **New menus, controller first, in the game's metal style:**
+  - Start / Free Roam / Settings on the title screen
+  - a glowing focus on the challenge select
+  - pause on Esc or Start (Resume, Restart, Settings, Leave, Quit)
+  - a Settings page whose changes apply instantly
+  - button prompts that follow the device in use (keyboard, Xbox,
+    PlayStation)
+
+  The macOS menu bar is now only a convenience; the technical options
+  moved to a developer page (F1).
+- `scripts/reference/compare_views.py`: both games' cars at 12 matched
+  spots, side by side.
 - R (or Y on a controller) puts the car back on its wheels, facing the same
   way. Not in the original.
 - Restart the race with ⌘R or F5, or from the Game menu.
