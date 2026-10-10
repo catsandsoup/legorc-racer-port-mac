@@ -17,3 +17,4 @@
 
 # Reference captures of the original (never published)
 local/
+__pycache__/
