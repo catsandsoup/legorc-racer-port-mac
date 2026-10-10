@@ -151,6 +151,6 @@ Release guard: `python3 scripts/release-guard.py --tree` (or `--staged`,
    rumble, then DualSense adaptive triggers through GameController.
 5. Then the UI milestone: one settings model, drawn in the game's art,
    with Controls, Car Setup, Events, Mods and Developer pages.
-6. Multiplayer is scoped in `docs/MULTIPLAYER.md` (split-screen first,
-   then LAN, then internet, then PC). Not started; wait for the owner's
+6. Multiplayer is scoped in `docs/MULTIPLAYER.md` (Apple silicon only:
+   split-screen first, then LAN, then internet). Not started; wait for the owner's
    go-ahead.

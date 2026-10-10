@@ -63,7 +63,7 @@ Facts to plan with:
 | **AI racers** | Needs racing lines (start from the checkpoint order and the `Checkpoint_N` positions), an AI driver feeding the same `DriveInput` to more `Car` instances, car-to-car collision layers, and a race mode with positions. The physics already supports more cars; the hard part is AI that handles stunts and recovery without cheating. Prototype on Free Driving's checkpoint loop first |
 | Split-screen multiplayer | Scoped in [MULTIPLAYER.md](MULTIPLAYER.md): per-device player slots, a second car, two SubViewports, a head-to-head checkpoint race. About 1–2 weeks; low risk |
 | New tracks | Replace `world.glb` plus `collision.json` plus lightmaps; needs an authoring guide and a lightmap bake |
-| Online play (Mac to Mac, later PC) | Scoped in [MULTIPLAYER.md](MULTIPLAYER.md): each player owns their car (lockstep and rollback aren't viable with Godot's Jolt), ENet, LAN first, then UPnP. About 2–3 weeks after split-screen. Leaderboards need a server and a privacy review |
+| Online play (Apple silicon Mac to Mac) | Scoped in [MULTIPLAYER.md](MULTIPLAYER.md): each player owns their car (lockstep and rollback aren't reliable with Godot's Jolt), ENet, LAN first, then UPnP. About 2–3 weeks after split-screen. Leaderboards need a server and a privacy review |
 
 ## UI for all of this
 

@@ -9,7 +9,8 @@ Asked for:
 
 1. Split-screen on one Mac, with two controllers or with a keyboard and a
    controller.
-2. Online play against another Mac, and later a PC.
+2. Online play against another Apple silicon Mac. The project targets
+   Apple silicon (arm64) only; PC is out of scope for now (see the end).
 
 Sources: Godot 4.7.2 engine source and Godot's docs (`godot-docs` master),
 the Jolt Physics docs, and Apple's TN3179. Paths and line numbers are in
@@ -81,7 +82,7 @@ on the Mac before calling it done.
 
 | Option | How it works | Verdict |
 |---|---|---|
-| Lockstep: both machines simulate everything from shared inputs | Needs bit-identical physics on both machines | **Not viable for Mac against PC.** Jolt is deterministic across platforms only with `CROSS_PLATFORM_DETERMINISTIC` (Jolt `Docs/Architecture.md`, "Deterministic Simulation"). Godot's `modules/jolt_physics/SCsub` doesn't set it. Even Mac to Mac needs the same binary and the same API call order |
+| Lockstep: both machines simulate everything from shared inputs | Needs bit-identical physics on both machines | **Fragile even Mac to Mac.** Jolt is deterministic only with the same binary and exactly the same order of API calls (Jolt `Docs/Architecture.md`, "Deterministic Simulation"). Two copies of the same arm64 build meet the first condition, but Godot's physics server, threads and mods make the second hard to guarantee, and one divergence desyncs the race for good |
 | Rollback | Rewind and replay when late inputs arrive | **Not viable with stock Godot.** Jolt has `SaveState`/`RestoreState` ("Rolling Back a Simulation"), but Godot's physics server doesn't expose them |
 | **Each player owns their car** (recommended) | Each machine simulates its own car with the original physics and sends its pose (position, rotation, velocities) about 30 times a second. The other car is shown interpolated and moved kinematically | Viable. Your own car has zero input lag and exactly the 2003 feel. Car-to-car contact is approximate (a remote car is a moving obstacle), so ghost cars stay the default. Cheating is possible, which is fine for playing with friends |
 | Host runs both cars | The client sends inputs and the host sends back state | Fair, but the client feels its own car lag behind by the round trip unless it predicts, and prediction needs the rollback Godot lacks. Revisit if ranked play is ever wanted |
@@ -117,9 +118,6 @@ on the Mac before calling it done.
    order and results. Clients report checkpoint times.
 4. **LAN first,** then UPnP for the internet, then a manual "forward this
    UDP port" fallback with in-game help.
-5. **PC later.** ENet is cross-platform. The work is a Windows build of
-   the game and the converter, and a CI job.
-
 Effort: about 2–3 weeks for LAN play between two Macs once split-screen
 exists. Add 1–2 weeks for internet play via UPnP and port-forward help.
 Add a relay or WebRTC path only if testers can't connect.
@@ -128,14 +126,13 @@ Add a relay or WebRTC path only if testers can't connect.
 
 | What | Who owns it | Where | When it bites | Why it matters |
 |---|---|---|---|---|
-| Physics isn't identical across Mac and PC | Jolt / Godot | Jolt `Docs/Architecture.md`; Godot `modules/jolt_physics/SCsub` | Choosing the netcode model | Rules out lockstep and rollback. Each player owning their car avoids the problem |
+| Physics may not stay identical between two Macs | Jolt / Godot | Jolt `Docs/Architecture.md`; Godot `modules/jolt_physics/SCsub` | Choosing the netcode model | Lockstep needs identical call order, and Godot doesn't expose Jolt's rollback. Each player owning their car avoids the problem |
 | macOS local network permission | Apple | TN3179 "Understanding local network privacy" | First LAN connection on macOS 15 or later | macOS shows a permission alert the first time the app touches the local network. The app needs `NSLocalNetworkUsageDescription` in its Info.plist (and `NSBonjourServices` if Bonjour is used). If the player denies it, LAN play fails silently, so the game must explain and point to System Settings → Privacy & Security → Local Network |
 | Ad hoc signing | Apple; the project signs ad hoc (`scripts/package-macos.sh`) | TN3179, ad hoc section | Every new build | Apple: local network privacy tracks the app by its code signature and says to sign with an Apple-issued identity for reliable tracking. With ad hoc signing, players may be asked again after each update. A paid Developer ID would fix it |
 | Port forwarding and UPnP | The player's router | Godot `high_level_multiplayer.rst`; `UPNP.xml` | Internet play | The host must open a UDP port; UPnP helps where the router allows it |
 | WebRTC on desktop is a separate plugin | Godot (`webrtc-native`, MIT) | `tutorials/networking/webrtc.rst` | Only if a NAT-traversal path is needed | An extra download in the app, plus a signalling server someone has to run |
 | Both players need matching game data | Each player | `manifest.json` from `ssrc-import` | Joining a game | Each player converts their own copy, and no game bytes are ever sent. The handshake compares the build version and the converter's `format_version` |
 | Two keyboards aren't supported | Godot | `input_event.h`, line 67 | Keyboard plus keyboard | Use keyboard plus controller, or split one keyboard |
-| A Windows build | This project | `game/export_presets.cfg` has macOS and Linux presets only; no Windows preset or CI | Mac against PC | Needs a Windows export preset, the converter and the game library built for Windows, a CI job, and testing |
 | Godot 4.8 default change | Godot | `controllers_gamepads_joysticks.rst`, "Window focus" | Upgrading past 4.7 | New 4.8 projects ignore controllers while the window is unfocused. Irrelevant for one window, but worth knowing when upgrading |
 
 ## Suggested order
@@ -144,8 +141,15 @@ Add a relay or WebRTC path only if testers can't connect.
    per-device input, a second car and HUD, and a two-player mode.
 2. LAN play between two Macs on top of the same player list.
 3. Internet play with UPnP and port-forward help.
-4. Windows build, then Mac-against-PC.
 
 Each step ends with the usual proof: before/after screenshots, measured
 speed at 1.00× and critiques. The original single-player game stays the
 default throughout.
+
+## Not now: PC
+
+Out of scope while the project targets Apple silicon. If it ever
+happens: ENet is cross-platform, but there is no Windows export preset or
+CI, and Mac-against-PC physics can't be lockstepped because Godot builds
+Jolt without `CROSS_PLATFORM_DETERMINISTIC` (`modules/jolt_physics/SCsub`).
+Each player owning their car, as above, would still work.
