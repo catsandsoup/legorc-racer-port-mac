@@ -10,11 +10,14 @@ You're continuing my native Apple silicon port of LEGO Supersonic RC
 
 Before anything else, read these files in the repo, in this order:
 
-1. `docs/PRODUCT_RULES.md` (the standing rules; follow them exactly)
-2. `HANDOFF.md` (current state, what's proven, known issues, how to build,
-   test hooks)
-3. `docs/ROADMAP.md` (goals ranked by feasibility)
-4. `CHANGELOG.md`, `docs/PORTING.md`, `docs/REFERENCE.md` (how to run the
+1. `docs/PRODUCT_RULES.md` (the standing rules, the goal, the Wine baseline;
+   follow them exactly)
+2. `docs/PLAYER_JOURNEY.md` and `docs/DESIGN_PRINCIPLES.md` (the player's
+   side, the art direction, controller first)
+3. `HANDOFF.md` (current state, known bugs from my Mac playtest, how to
+   build, test hooks)
+4. `docs/ROADMAP.md` (goals ranked by feasibility)
+5. `CHANGELOG.md`, `docs/PORTING.md`, `docs/REFERENCE.md` (how to run the
    original under Wine as the reference) and `docs/MODDING.md`
 
 Don't treat anything in them as true until you've seen it on screen
@@ -34,15 +37,22 @@ As a modern gamer I want:
 
 Every gameplay change is opt-in and off by default, as the rules say.
 
-Start with Level 0 in `docs/ROADMAP.md` (CI green, my real-Mac test,
-release guard, keeping my original files, verifying the prize modes
-against the original). Then do the controller milestone, then the UI
-milestone. Work in small milestones. Each one ends with before/after
-screenshots of the real build, measured speed at 1.00×, and a UX critique
-and a style critique against the original's screens (each with a verdict
-and at most five ranked fixes). Commit and push every change and keep
-`HANDOFF.md` current. Ask me before architecture changes, downloads,
-publishing or anything irreversible.
+Follow "Next steps" in `HANDOFF.md`:
+
+1. First, the baseline against the original under Wine: every model and
+   texture, and driving every surface. Fix the bugs from my playtest.
+2. Then controller-first menus, pause and Settings in the game's own art.
+3. Then the rest of Level 0, then controllers, then the UI pages.
+
+Work in small milestones. Each one ends with:
+
+- before/after screenshots of the real build
+- measured speed at 1.00×
+- a UX critique and a style critique (`.claude/agents/`) against the
+  original's screens, each with a verdict and at most five ranked fixes
+
+Commit and push every change and keep `HANDOFF.md` current. Ask me before
+architecture changes, downloads, publishing or anything irreversible.
 
 The game files aren't in the repo. Ask me for `Supersonic_RC.zip` when you
 need it.

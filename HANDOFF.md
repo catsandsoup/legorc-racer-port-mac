@@ -2,7 +2,7 @@
 
 Owner: [catsandsoup](https://github.com/catsandsoup). Repo: `catsandsoup/legorc-racer-port-mac`.
 
-Last updated: end of session 1 (2026-10-10). The repo is
+Last updated: session 1, after the owner's first Mac playtest (2026-10-10). The repo is
 `catsandsoup/legorc-racer-port-mac`.
 
 ## What this is
@@ -25,11 +25,11 @@ for what's next, and `docs/NEXT_SESSION_PROMPT.md` for the brief to start a new 
 | Physics feel | Matches the original in a timed run | Same car position at 1.5, 3 and 4.5 s of full throttle (Wine reference) |
 | Original lighting | Matches | Floor, wall and ceiling within a few RGB levels of the original |
 | Widescreen, 4K, any frame rate | Done (Linux, OpenGL) | 1600×900 and 1280×960 screenshots; physics interpolation on |
-| Settings: macOS menu bar | Code written, never run on a Mac | — |
+| Settings: macOS menu bar | Exists, but it's the wrong door: a controller player can't use it. Must become a convenience only | Owner's playtest |
 | Settings: in-game panel (F1) | Code written, not screenshotted | — |
 | Mods (assets, `tuning.json`, GDScript, GDExtension) | Asset, tuning and GDScript mods proven | `examples/mods/hello-gdscript` printed live speed in a run |
 | macOS build | **Green** on `macos-15` (run 6, commit 5e69484). Builds the converter and arm64 library, exports with Godot's universal template, thins it to arm64, ad-hoc signs, and a headless launch inside the packaged app loads the game library and runs the bundled converter. Download: the `Supersonic-RC-macOS-AppleSilicon` artifact on the latest run | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
-| macOS app on a real Mac | **Never run** | — |
+| macOS app on a real Mac | **Runs** (owner's first playtest, 2026-10-10): title, challenge select and races work on Metal. Bugs below | Owner's screenshots |
 
 All "Done" rows were proven on Linux (Xvfb, llvmpipe, Godot's
 Compatibility renderer). Metal, Forward+, MetalFX, the native menu, the
@@ -37,22 +37,40 @@ Gatekeeper flow and controllers on macOS are unproven.
 
 ## Known issues
 
-1. A few textures on the car's rear fins don't match the original. The
-   wing was fixed by the per-scene UV flip; the fins weren't. Suspect the
-   W3D CLOD texture-coordinate decode for those meshes.
-2. Scavenger Hunt and Supersonic Challenge haven't been compared against
+From the owner's first Mac playtest (2026-10-10), highest impact first:
+
+1. **The car falls through the stairs and through the ramp leading down to
+   the shelves.** Reproduced on Linux. Start the car at the top of the left
+   flight with a `tuning.json` mod (`start_x -669, start_y -3937,
+   start_z 350`) and accelerate. The car drops off the top landing and down
+   the 1.2 m steps, and ends up inside the staircase below the floor.
+   - The collision meshes all match their visual models exactly, and the
+     walkable faces point up, so nothing is missing or misplaced.
+   - Root cause not found yet. Compare the same route in the original under
+     Wine before fixing.
+2. **After falling, the car reappeared stuck in the shelves.** The respawn
+   copies the original (`pickupManager`: cast a ray down from z = 800 and
+   place the car 30 units above the first hit). Fixing item 1 removes most
+   of this. Check it against Wine.
+3. **The dinosaur's lower half is black.** Cause: `lightMapManager` clones
+   each lightmapped model's shaders as `<name>_Clone`. It then retunes
+   `D_Clone`, the dinosaur's clone, to diffuse `#441111` with ambient 0, and
+   removes its lightmap. The port wrongly assumed the retune only reached
+   models without a lightmap. A fix is in `src/materials.cpp`; it hasn't been
+   compared against Wine yet.
+4. **Controls don't work for a controller player.** Settings live only in
+   the macOS menu bar and an F1 panel. The menus aren't controller-navigable,
+   and there is no pause.
+5. The owner remembers the checkpoint arrow at the top of the screen. The
+   Wine capture shows it at the bottom centre, as the port draws it.
+   Re-check under Wine before changing anything.
+6. A few textures on the car's rear fins don't match the original.
+7. Scavenger Hunt and Supersonic Challenge haven't been compared against
    the original. Under Wine the projector closed once while entering
-   Scavenger Hunt. The prize model's UV flip is unverified.
-3. The controller is digital: triggers act as on/off at 30 %. Analog
-   pedals are on the roadmap.
-4. There is no pause menu. Esc leaves the race, as in the original. The
-   settings panel pauses the game when open during a race.
-5. The menus aren't fully navigable by controller (level select accepts
-   A/Enter for the highest unlocked mode).
-6. There's no release guard script yet, only `.gitignore`.
-7. The original files aren't kept after import (only the converted data).
-8. `docs/PRODUCT_RULES.md` wants the settings UI drawn in the game's own
-   art. The panel is currently a plain Godot dark panel.
+   Scavenger Hunt.
+8. The controller is digital: triggers act as on/off at 30 %.
+9. There's no release guard script yet, only `.gitignore`.
+10. The original files aren't kept after import (only the converted data).
 
 ## Layout
 
@@ -111,12 +129,24 @@ For a fresh first-run test, set `HOME` to an empty folder that contains
 
 ## Next steps (in order)
 
-1. CI is green. Optional: tag `v0.1.0` so the app is attached to a GitHub release (ask the owner first; it publishes).
-2. The owner downloads the artifact and plays it on a Mac. Fix what they
-   hit first.
-3. Do Level 0 in `docs/ROADMAP.md`: release guard, keep the original
-   files, verify the prize modes against Wine, controller menu navigation.
-4. Then the controller milestone: analog trigger pedals (opt-in), glyphs,
-   rumble, then DualSense adaptive triggers through GameController.
-5. Then the UI milestone: one settings model, drawn in the game's art,
-   with Controls, Car Setup, Events, Mods and Developer pages.
+1. **Baseline against the original under Wine** (`docs/PRODUCT_RULES.md`,
+   "The baseline"):
+   - compare every model and texture side by side
+   - drive the same scripted routes over every surface (floor, ramps,
+     stairs, shelves, upper floor, dinosaur, boxes)
+
+   Fix known issues 1–3 and 5 with before/after screenshots.
+2. **Controller-first menus, pause and Settings** in the game's own art
+   (`docs/DESIGN_PRINCIPLES.md` §4–6):
+   - the title, challenge select and help work by controller, with prompts
+     for the device in use
+   - Start, Options or Esc pauses
+   - a Settings item on the title and challenge select
+   - the macOS menu bar becomes a convenience
+
+   Run both critics.
+3. Level 0 in `docs/ROADMAP.md`: release guard, keep the original files,
+   verify the prize modes against Wine.
+4. Analogue trigger pedals (opt-in), glyphs and rumble, then DualSense
+   adaptive triggers through GameController.
+5. The Car Setup, Events, Mods and Developer pages.
