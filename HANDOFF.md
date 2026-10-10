@@ -2,7 +2,7 @@
 
 Owner: [catsandsoup](https://github.com/catsandsoup). Repo: `catsandsoup/legorc-racer-port-mac`.
 
-Last updated: end of session 1 (2026-10-09). The repo is
+Last updated: end of session 1 (2026-10-10). The repo is
 `catsandsoup/legorc-racer-port-mac`.
 
 ## What this is
@@ -28,7 +28,7 @@ for what's next, and `docs/NEXT_SESSION_PROMPT.md` for the brief to start a new 
 | Settings: macOS menu bar | Code written, never run on a Mac | — |
 | Settings: in-game panel (F1) | Code written, not screenshotted | — |
 | Mods (assets, `tuning.json`, GDScript, GDExtension) | Asset, tuning and GDScript mods proven | `examples/mods/hello-gdscript` printed live speed in a run |
-| macOS build | CI written. **Run 1 was in progress at handoff**: the converter built and passed its tests on `macos-15`, and the arm64 library was compiling | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
+| macOS build | **Green** on `macos-15` (run 6, commit 5e69484). Builds the converter and arm64 library, exports with Godot's universal template, thins it to arm64, ad-hoc signs, and a headless launch inside the packaged app loads the game library and runs the bundled converter. Download: the `Supersonic-RC-macOS-AppleSilicon` artifact on the latest run | https://github.com/catsandsoup/legorc-racer-port-mac/actions |
 | macOS app on a real Mac | **Never run** | — |
 
 All "Done" rows were proven on Linux (Xvfb, llvmpipe, Godot's
@@ -111,7 +111,7 @@ For a fresh first-run test, set `HOME` to an empty folder that contains
 
 ## Next steps (in order)
 
-1. Get CI green. If the first run fails, read the job log, fix and push.
+1. CI is green. Optional: tag `v0.1.0` so the app is attached to a GitHub release (ask the owner first; it publishes).
 2. The owner downloads the artifact and plays it on a Mac. Fix what they
    hit first.
 3. Do Level 0 in `docs/ROADMAP.md`: release guard, keep the original

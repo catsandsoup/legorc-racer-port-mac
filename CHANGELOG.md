@@ -66,6 +66,8 @@ Project owner: catsandsoup.
 - GitHub Actions on `macos-15`:
   - builds the converter and the arm64 library
   - exports and packages the `.app` with the converter inside
+  - exports with Godot's universal macOS template (the only one it ships)
+    and keeps just the Apple silicon slice
   - ad-hoc signs it and runs a headless launch smoke test
   - uploads the artifact, and attaches it to tagged releases
 - Original app icon. GPL-3.0 licence.

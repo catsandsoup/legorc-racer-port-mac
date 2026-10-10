@@ -24,7 +24,9 @@ cp game/fonts/LICENSE-DejaVu.txt "$APP/Contents/Resources/"
 # Ad-hoc signature over the whole bundle (no paid Apple ID needed).
 codesign --force --deep --sign - --timestamp=none "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
-lipo -archs "$APP/Contents/MacOS/"* 2>/dev/null || true
+for f in "$APP/Contents/MacOS/"* "$APP/Contents/Frameworks/"*.framework/lib*; do
+  echo "$(basename "$f"): $(lipo -archs "$f" 2>/dev/null || echo not-mach-o)"
+done
 
 FINAL="$OUT_DIR/Supersonic-RC-macOS-AppleSilicon.zip"
 rm -f "$FINAL"
