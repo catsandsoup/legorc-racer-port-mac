@@ -9,10 +9,11 @@ an open format and rendered by a modern engine.
 
 - Apple silicon native (arm64), Metal renderer, Jolt physics on multiple cores
 - Any window size or fullscreen, up to 4K and beyond, with optional supersampling
-  or MetalFX/FSR upscaling
-- Any frame rate (vsync off, 120 Hz, 240 Hz, unlimited). Physics runs at the
-  original 60 updates a second and is interpolated, so the car handles exactly
-  like it did in 2003 at any frame rate
+  or FSR upscaling
+- Any frame rate (vsync off, 120 Hz, 240 Hz, unlimited). The physics runs
+  exactly as the 2003 game did, independent of your display: 40 frames a
+  second, each split into the original's two physics updates, then smoothed
+  on screen by interpolation. So the car handles the same at 60, 120 or 240 Hz.
 - Mac menu bar for display, graphics, gameplay and audio settings
 - Moddable: swap textures, models, sounds and physics constants by dropping
   files in a folder, or write C++ or GDScript mods
@@ -50,6 +51,8 @@ Use **Game → Re-import Game Files…** to convert them again.
 | Brake / reverse | ↓ | Left trigger / X |
 | Steer | ← → | Left stick / D-pad |
 | Handbrake (power slide) | Space | B / Right shoulder |
+| Put the car back on its wheels | R | Y / △ |
+| Restart the race | ⌘R or F5 | |
 | Leave the race | Esc | Start |
 | Sound on/off | S | |
 | Settings | F1 or ⌘, | |
@@ -63,13 +66,15 @@ or use **Game → Unlock All Modes**. Unlocks are saved.
 Everything is in the menu bar (and in the in-game panel, F1):
 
 - **Display:** window mode, window size (up to 3840 × 2160), render
-  resolution 50 to 200 %, upscaler (bilinear, FSR 1, FSR 2, MetalFX spatial,
-  MetalFX temporal), anti-aliasing (MSAA 2/4/8×, FXAA, TAA), V-Sync, frame
-  rate limit, FPS counter
+  resolution 50 to 200 %, upscaler (bilinear, FSR 1), anti-aliasing
+  (MSAA 2/4/8×, FXAA, TAA), V-Sync, frame rate limit, FPS counter
 - **Graphics:** Original lighting (Director's own lighting model with the
   baked lightmaps, checked against the 2003 game) or Enhanced (real-time
-  shadows, SSAO, glow); texture filtering; field of view; camera
-- **Gameplay:** game speed 50 to 200 %; physics rate 60 to 480 Hz
+  shadows, SSAO, glow); texture filtering; field of view; camera. Lighting
+  and texture changes apply instantly, even mid-race
+- **Gameplay:** game speed 50 to 200 %; physics precision (Standard, High,
+  Very High: finer physics steps, same handling); help screen before the
+  first race only, or before every race as in the original
 - **Audio:** music and effects volume
 
 ## How it works

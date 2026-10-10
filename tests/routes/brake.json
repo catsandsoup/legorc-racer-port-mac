@@ -1,0 +1,8 @@
+{"mode": 0,
+ "spawn": [3543, -4724, 338.66, 90],
+ "settle": 1.0,
+ "input": "accelerate:0-2.5,brake:2.5-4",
+ "duration": 4.5,
+ "window": [2.5, 4.5],
+ "orig_runs": 5,
+ "note": "Straight-line braking: nose dive (pitch), stopping distance."}

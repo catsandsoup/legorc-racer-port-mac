@@ -4,7 +4,15 @@ Project owner: catsandsoup.
 
 ## Unreleased
 
-### Fixed (from the owner's first Mac playtest)
+### Fixed (from the owner's Mac playtests)
+- **Timing now matches the original.** The movie runs at 40 frames a second
+  (its config frame rate), and each frame is split into two physics updates
+  of 12.5 and 37.5 ms of simulation. That's 2.0x real time; the port had
+  assumed 60 updates of 37.5 ms (2.25x). Measured against the original
+  under Wine (39 fps, 2.02x). Straight-line speed and braking now match it,
+  and the camera and steering update as often as in 2003.
+- FSR 2 and MetalFX are hidden until they're proven on a Mac (one of them
+  froze the owner's game).
 - Floors, walls, ramps, stairs and shelf tops are solid. The Havok shapes
   are two-sided; one-sided shapes let the car through them.
 - The dinosaur no longer has the blotchy black lightmap. As in the
@@ -12,6 +20,16 @@ Project owner: catsandsoup.
 - ⌘Q quits even in full screen, where the menu bar is hidden.
 
 ### Added
+- R (or Y on a controller) puts the car back on its wheels, facing the same
+  way. Not in the original.
+- Restart the race with ⌘R or F5, or from the Game menu.
+- The help screen shows before the first race only (setting: every race,
+  as in the original).
+- `--race N` launch option: straight into challenge N.
+- Lighting and texture filtering apply instantly, even mid-race.
+- `scripts/reference/`: drives the original under Wine, reads and writes its
+  car physics in memory (telemetry, spawn anywhere), and compares it with
+  the port route by route.
 - `scripts/test-collision.sh`: a regression test that the collision world
   is solid.
 - Docs: `PLAYER_JOURNEY.md`, `DESIGN_PRINCIPLES.md`, rewritten

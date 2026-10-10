@@ -905,6 +905,7 @@ Transform3D DrivingSession::prop_model_xform(const String &scene_rel, MeshInstan
 		// The arrow is drawn by its own camera whose rootNode is the arrow, so
 		// no scene lights reach it: only its emissive colour shows.
 		apply_director_materials(m, tex_dir, overlay ? DirectorLights() : lights, overlay ? 0 : st.lighting, st.texture_filter, overlay);
+		tag_materials(m, tex_dir, overlay);
 		m->get_parent()->remove_child(m);
 		m->set_transform(Transform3D());
 		*mesh_out = m;
@@ -1029,6 +1030,7 @@ void DrivingSession::build_world() {
 	const Settings &st = game->settings();
 	load_lights();
 	apply_director_materials(world, "world_textures", lights, st.lighting, st.texture_filter);
+	tag_materials(world, "world_textures", false);
 
 	// Visual geometry for modelsUnderRay (wheels, camera, shadow, respawn).
 	PackedVector3Array ray_faces;
@@ -1096,6 +1098,35 @@ void DrivingSession::build_world() {
 	}
 	add_child(coll);
 
+	setup_lighting();
+}
+
+void DrivingSession::tag_materials(Node *root, const String &tex_dir, bool overlay) {
+	root->set_meta("ssrc_tex_dir", tex_dir);
+	root->set_meta("ssrc_overlay", overlay);
+}
+
+// Settings changed mid-race (lighting, texture filtering): rebuild every
+// material and the Enhanced lights from the original data, no restart.
+void DrivingSession::apply_graphics() {
+	const Settings &st = game->settings();
+	TypedArray<Node> all = find_children("*", "", true, false);
+	for (int i = 0; i < all.size(); i++) {
+		Node *n = Object::cast_to<Node>(all[i]);
+		if (n && n->has_meta("ssrc_tex_dir")) {
+			bool overlay = n->get_meta("ssrc_overlay");
+			apply_director_materials(n, n->get_meta("ssrc_tex_dir"), overlay ? DirectorLights() : lights, overlay ? 0 : st.lighting, st.texture_filter, overlay);
+		}
+	}
+	setup_lighting();
+}
+
+void DrivingSession::setup_lighting() {
+	const Settings &st = game->settings();
+	for (Node *n : lighting_nodes) {
+		n->queue_free();
+	}
+	lighting_nodes.clear();
 	// Godot lights only drive the "Enhanced" look; "Original" shading is
 	// computed in the material from the same Director lights.
 	if (st.lighting == 1) {
@@ -1108,6 +1139,7 @@ void DrivingSession::build_world() {
 			dl->look_at_from_position(Vector3(), dir_g, up);
 			dl->set_shadow(dir_g.y < -0.5);
 			add_child(dl);
+			lighting_nodes.push_back(dl);
 		}
 	}
 	Color ambient = lights.ambient;
@@ -1128,9 +1160,10 @@ void DrivingSession::build_world() {
 	}
 	we->set_environment(env);
 	add_child(we);
+	lighting_nodes.push_back(we);
 }
 
-void DrivingSession::logic_tick() {
+void DrivingSession::logic_update() {
 	Car *c = car.get();
 	c->read_state();
 	c->after_physics_contacts();
@@ -1146,6 +1179,13 @@ void DrivingSession::logic_tick() {
 	in.left = inp->is_action_pressed("steer_left");
 	in.right = inp->is_action_pressed("steer_right");
 	in.handbrake = inp->is_action_pressed("handbrake");
+	// Not in the original: R / Y puts the car back on its wheels, facing
+	// the same way, a little above where it is.
+	bool reset = inp->is_action_pressed("reset_car");
+	if (reset && !reset_held) {
+		c->set_upright(20);
+	}
+	reset_held = reset;
 	real_t axis = inp->get_axis("steer_left_analog", "steer_right_analog");
 	in.steer_axis = Math::abs(axis) > 0.15 ? axis : 0.0;
 
@@ -1164,7 +1204,11 @@ void DrivingSession::logic_tick() {
 	c->update(in);
 	mode->havok_update();
 	mode->stunt_update();
+}
 
+void DrivingSession::frame_step() {
+	Car *c = car.get();
+	frames++;
 	// actorList stepFrame
 	c->step_frame();
 	mode->step_frame();
@@ -1238,9 +1282,26 @@ void DrivingSession::_physics_process(double delta) {
 		return;
 	}
 	sim_seconds += delta;
+	if (timing.ticks_per_frame == 0) {
+		timing = frame_timing(Tuning().frame_rate);
+	}
+	// One movie frame = the original's chunked updates. Forces computed by
+	// an update act during the next update's step, as in havokManager. The
+	// last update of a frame is followed by the actors' stepFrame.
 	int substeps = MAX(1, game->settings().physics_substeps);
-	if (tick_counter % substeps == 0) {
-		logic_tick();
+	int t = tick_counter % (timing.ticks_per_frame * substeps);
+	int start = 0;
+	for (size_t i = 0; i < timing.chunk_ticks.size(); i++) {
+		if (t == start) {
+			logic_update();
+			if (finished || !running) {
+				return;
+			}
+			if (i == 0) {
+				frame_step();
+			}
+		}
+		start += timing.chunk_ticks[i] * substeps;
 	}
 	tick_counter++;
 	if (car && !finished) {
@@ -1314,6 +1375,10 @@ Dictionary DrivingSession::get_car_state() const {
 	d["y_axis"] = x.y_axis();
 	d["z_axis"] = x.z_axis();
 	d["sim_time"] = sim_seconds;
+	d["game_time"] = sim_seconds / MAX(timing.sim_per_real, real_t(0.001)); // real seconds at 1.00x
+	// Physics ticks since the current movie frame began (0 = frame start).
+	int per_frame = MAX(1, timing.ticks_per_frame * MAX(1, game->settings().physics_substeps));
+	d["frame_tick"] = tick_counter % per_frame;
 	return d;
 }
 

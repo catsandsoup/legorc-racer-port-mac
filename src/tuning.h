@@ -4,17 +4,33 @@
 #pragma once
 
 #include <godot_cpp/core/math_defs.hpp>
+#include <vector>
 #include <godot_cpp/variant/dictionary.hpp>
 
 namespace ssrc {
 
 using namespace godot;
 
+// How one movie frame turns into physics updates (see frame_rate).
+struct FrameTiming {
+	std::vector<int> chunk_ticks; // physics ticks per drivingManager update, in order
+	int ticks_per_frame = 0; // base ticks (one tick = tick_sim seconds)
+	real_t tick_sim = 0; // simulated seconds per base tick
+	real_t sim_per_real = 0; // simulated seconds per real second
+	real_t frame_rate = 0;
+};
+FrameTiming frame_timing(real_t frame_rate);
+
 struct Tuning {
 	// havokManager
 	real_t gravity_factor = 0.2; // pHavok.gravity * 0.2
-	real_t sim_speed = 2.25; // sim seconds per real second (step clamp 0.015 * 2.5 per 60 Hz update)
-	real_t logic_hz = 60.0; // drivingManager update rate (<= 20 ms chunks)
+	// The movie's tempo (its config frame rate): stepFrame runs at most 40
+	// times a second. drivingManager splits each frame's milliseconds into
+	// chunks of at most 20 ms and havokManager steps each chunk, clamped to
+	// 3..15 ms, times 2.5. At 40 fps: 5 ms + 20 ms -> 12.5 + 37.5 ms of
+	// simulation per 25 ms frame (2.0x real time). Measured in the original
+	// under Wine: 39 fps, 2.02x.
+	real_t frame_rate = 40.0;
 	// car
 	real_t car_mass = 3.0;
 	real_t car_friction = 10.0;
@@ -28,8 +44,11 @@ struct Tuning {
 	// velocity by F*dt/(6*7*m). Measured against Director by the DirPlayer
 	// project (havok_physics.rs); torque dividers are their calibrated values.
 	real_t force_divider = 42.0;
-	real_t torque_divider_pitch_roll = 434.0;
-	real_t torque_divider_yaw = 158.76;
+	// Torque scale per axis of the CAR (x = pitch, y = roll, z = yaw),
+	// fitted to the original's telemetry (tests/routes, compare_route.py).
+	real_t torque_divider_pitch = 500.0;
+	real_t torque_divider_roll = 1400.0;
+	real_t torque_divider_yaw = 1000.0;
 	real_t angular_damp = 0.0;
 	real_t start_x = 3790.17, start_y = -5696.19, start_z = 338.6598;
 	real_t wheel_x = 9.5, wheel_y = 17.0, wheel_z = -5.0;

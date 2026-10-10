@@ -201,6 +201,12 @@ fn convert_all(player: &vm_rust::player::DirPlayer, out: &Path, verbose: bool) -
     manifest["lightmapped_models"] = json!(lightmaps.len());
     manifest["physics"] = json!({"file": "physics/collision.json", "bodies": phys.bodies, "triangles": phys.triangles});
     manifest["stage"] = json!({"width": player.movie.rect.width(), "height": player.movie.rect.height()});
+    // The movie's frame rate and the score's tempo channel: the game's
+    // physics step depends on the frame rate (drivingManager.update).
+    let tempos: Vec<serde_json::Value> = player.movie.score.tempo_channel_data.iter()
+        .map(|(frame_idx, td)| json!({"frame": frame_idx + 1, "tempo": td.tempo, "fps_or_delay": td.tempo_cue_point}))
+        .collect();
+    manifest["tempo"] = json!({"movie_frame_rate": player.movie.frame_rate, "score_tempo_changes": tempos});
     write_json(&out.join("images.json"), &json!(images))?;
     write_json(&out.join("sounds.json"), &json!(sounds))?;
     write_json(&out.join("text.json"), &json!(texts))?;

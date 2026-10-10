@@ -34,6 +34,7 @@ A route is JSON:
    "shots": [1.5, 3, 4.5],             # screenshot times, seconds after settling
    "duration": 6,                      # telemetry length (default: last event + 0.5)
    "orig_runs": 3,                     # repetitions in the original
+   "window": [1.5, 4],                 # measure stats only in this time window
    "note": "what this route checks"}
 """
 import argparse
@@ -112,15 +113,23 @@ def xdo(env, *args):
     subprocess.run(["xdotool", *args], env=env, check=False)
 
 
-def launch_original(orig_dir, mode):
+def launch_original(orig_dir, mode, speed=1.0):
     env = dict(os.environ, DISPLAY=DISPLAY, WINEDEBUG="-all",
                WINEPREFIX=os.environ.get("WINEPREFIX", str(Path(orig_dir).parent / "wineprefix")))
+    wine_env = dict(env)
+    if speed != 1.0:
+        # Slow the original's clock (libfaketime, both i386 and amd64 builds
+        # installed) so each of its frames looks like 15-20 ms. Every
+        # drivingManager update then becomes one 37.5 ms Havok step, as on a
+        # 60 fps PC and in the port. Xvfb and our own tools keep real time.
+        wine_env.update(LD_PRELOAD="/usr/$LIB/faketime/libfaketime.so.1", FAKETIME=f"+0 x{speed}",
+                        FAKETIME_NO_CACHE="1", LC_ALL="C")
     xvfb = subprocess.Popen(["Xvfb", DISPLAY, "-screen", "0", "1024x768x24"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(2)
     if mode > 0:
         xdo(env, "keydown", "Control_L")  # unlock all challenges, as in the original
-    subprocess.Popen(["wine", "SupersonicRC.exe"], cwd=orig_dir, env=env,
+    subprocess.Popen(["wine", "SupersonicRC.exe"], cwd=orig_dir, env=wine_env,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     deadline = time.time() + 90
     while time.time() < deadline:
@@ -148,9 +157,9 @@ def launch_original(orig_dir, mode):
     return env, xvfb
 
 
-def record(cs, t0, duration, rows, stop):
+def record(cs, t0, duration, rows, stop, speed=1.0):
     while not stop.is_set():
-        t = time.time() - t0
+        t = (time.time() - t0) * speed
         if t > duration:
             break
         s = cs.read()
@@ -158,27 +167,29 @@ def record(cs, t0, duration, rows, stop):
         time.sleep(1 / 120)
 
 
-def run_original(route, orig_dir, out, runs):
+def run_original(route, orig_dir, out, runs, speed=1.0):
+    """speed < 1 slows the original's clock; route times are game time, so
+    real delays are divided by speed and recorded times multiplied by it."""
     mode = int(route.get("mode", 0))
     spawn = route.get("spawn", START)
     settle = float(route.get("settle", 1.0))
     duration = route_duration(route)
-    env, xvfb = launch_original(orig_dir, mode)
+    env, xvfb = launch_original(orig_dir, mode, speed)
     try:
         cs = orig_memory.CarState(orig_memory.find_pid())
         for r in range(runs):
             for k in KEYS.values():
                 xdo(env, "keyup", k)
             cs.teleport((spawn[0], spawn[1], spawn[2] - COM_BELOW_MODEL), spawn[3] if len(spawn) > 3 else 0.0)
-            time.sleep(settle)
+            time.sleep(settle / speed)
             t0 = time.time()
             rows, stop = [], threading.Event()
-            rec = threading.Thread(target=record, args=(cs, t0, duration, rows, stop))
+            rec = threading.Thread(target=record, args=(cs, t0, duration, rows, stop, speed))
             rec.start()
             shots = [(float(t), "shot", None) for t in route.get("shots", [])] if r == 0 else []
             threads = []
             for t, kind, key in sorted(parse_input(route.get("input", "")) + shots, key=lambda e: e[0]):
-                delay = t0 + t - time.time()
+                delay = t0 + t / speed - time.time()
                 if delay > 0:
                     time.sleep(delay)
                 if kind == "shot":
@@ -328,20 +339,28 @@ def plot(out, ts, origs, port):
 
 def compare(route, out):
     lines = [f"# {route.get('name', 'route')}", "", route.get("note", ""), "",
-             f"Mode {route.get('mode', 0)}, spawn `{route.get('spawn', START)}`, input `{route.get('input', '')}`", ""]
+             f"Mode {route.get('mode', 0)}, spawn `{route.get('spawn', START)}`, input `{route.get('input', '')}`",
+             f"Measured over t = {route['window'][0]}-{route['window'][1]} s." if route.get("window") else "", ""]
     duration = route_duration(route)
     ts = np.arange(0, duration, 0.05)
     origs = [derived(a, ts) for a in (load(p) for p in sorted(out.glob("orig_run*.csv"))) if a is not None and len(a) > 2]
     pa = load(out / "port.csv") if (out / "port.csv").exists() else None
     port = derived(pa, ts) if pa is not None and len(pa) > 2 else None
+    window = route.get("window")
+    if window:  # measure only during the manoeuvre
+        sel = (ts >= window[0]) & (ts <= window[1])
+        ts_w = ts[sel]
+        origs_w = [{k: v[sel] for k, v in o.items()} for o in origs]
+        port_w = {k: v[sel] for k, v in port.items()} if port else None
     if origs:
         mean_xy = np.mean([[o["x"], o["y"], o["z"]] for o in origs], axis=0)
         spread = np.max([np.linalg.norm(np.array([o["x"], o["y"], o["z"]]) - mean_xy, axis=0) for o in origs], axis=0)
         lines += ["## Physics", "",
                   "| | original (mean of runs) | original spread | port |", "|---|---|---|---|"]
         def stat(name, f):
-            ov = [f(o[name]) for o in origs]
-            pv = f(port[name]) if port else float("nan")
+            os_, ps = (origs_w, port_w) if window else (origs, port)
+            ov = [f(o[name]) for o in os_]
+            pv = f(ps[name]) if ps else float("nan")
             return f"| {name} | {np.mean(ov):.1f} | {np.min(ov):.1f} to {np.max(ov):.1f} | {pv:.1f} |"
         lines.append(stat("speed", np.max).replace("| speed", "| top speed (in/s)"))
         lines.append(stat("roll", lambda v: np.max(np.abs(v))).replace("| roll", "| max roll (deg)"))
@@ -388,6 +407,8 @@ def main():
     ap.add_argument("--only", choices=["port", "orig"])
     ap.add_argument("--orig-runs", type=int)
     ap.add_argument("--tuning", help="tuning.json to apply to the port for this run")
+    ap.add_argument("--orig-speed", type=float, default=1.0,
+                    help="slow the original's clock by this factor (e.g. 0.68) so it steps like a 60 fps PC")
     a = ap.parse_args()
     route = json.loads(Path(a.route).read_text())
     route.setdefault("name", Path(a.route).stem)
@@ -396,7 +417,7 @@ def main():
     if a.only != "port":
         if not a.orig_dir:
             sys.exit("--orig-dir is required to run the original")
-        run_original(route, a.orig_dir, out, a.orig_runs or int(route.get("orig_runs", 3)))
+        run_original(route, a.orig_dir, out, a.orig_runs or int(route.get("orig_runs", 3)), a.orig_speed)
     if a.only != "orig":
         if not (a.godot and a.data):
             sys.exit("--godot and --data are required to run the port")

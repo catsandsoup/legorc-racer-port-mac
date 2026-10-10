@@ -24,7 +24,8 @@ struct Settings {
 	bool show_fps = false;
 	// Gameplay
 	real_t game_speed = 1.0;
-	int physics_substeps = 2; // physics steps per original 60 Hz update
+	int physics_substeps = 2; // Jolt ticks per 12.5 ms of the original's simulation
+	bool help_every_race = false; // the original showed help before every race
 	// Audio
 	real_t music_volume = 1.0;
 	real_t effects_volume = 1.0;

@@ -1,0 +1,8 @@
+{"mode": 0,
+ "spawn": [3543, -4724, 338.66, 90],
+ "settle": 1.0,
+ "input": "accelerate:0-4.5,steer_left:2-3.5",
+ "duration": 4.5,
+ "window": [2, 4.5],
+ "orig_runs": 5,
+ "note": "Step steer in the open part of the upper floor: 2 s of throttle, then full left for 1.5 s, then straight. Yaw rate, body roll and how fast the roll settles."}

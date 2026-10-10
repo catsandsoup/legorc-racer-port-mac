@@ -219,10 +219,12 @@ void Car::apply_force_at_point(const Vector3 &force_d, const Vector3 &point_loca
 	// both attenuated the way the Xtra's integrator did (see Tuning).
 	const Tuning &t = tuning();
 	Vector3 r = xform.basis.xform(point_local_d - center_of_mass_local);
-	Vector3 torque = r.cross(force_d);
-	torque.x /= t.torque_divider_pitch_roll;
-	torque.y /= t.torque_divider_pitch_roll;
-	torque.z /= t.torque_divider_yaw;
+	// Scale the torque about the car's own axes (x pitch, y roll, z yaw).
+	Vector3 local = xform.basis.xform_inv(r.cross(force_d));
+	local.x /= t.torque_divider_pitch;
+	local.y /= t.torque_divider_roll;
+	local.z /= t.torque_divider_yaw;
+	Vector3 torque = xform.basis.xform(local);
 	forces.push_back(PendingForce{ d2g(force_d / t.force_divider), d2g_dir(torque) * (WORLD_SCALE * WORLD_SCALE) });
 }
 
@@ -315,6 +317,13 @@ void Car::spawn_at(const DXform &x) {
 	body->set_angular_velocity(Vector3());
 	body->reset_physics_interpolation();
 	read_state();
+}
+
+void Car::set_upright(real_t dz) {
+	Vector3 f = xform.y_axis();
+	f.z = 0;
+	real_t heading = f.length() > 1e-3 ? Math::rad_to_deg(Math::atan2(-f.x, f.y)) : 0.0;
+	spawn_at(DXform{ rot_z_deg(heading), xform.origin + Vector3(0, 0, dz) });
 }
 
 void Car::teleport_up(real_t dz) {

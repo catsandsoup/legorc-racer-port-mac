@@ -101,7 +101,7 @@ func _process(delta: float) -> void:
 		shot("drive_%05.2f" % shots.pop_front())
 
 # Inputs, telemetry and the test clock run on the game's own logic ticks
-# (simulated time / 2.25 at 1.00x), so port runs repeat exactly whatever
+# (game time: simulated time over the original's 2.0x), so port runs repeat exactly whatever
 # the frame rate.
 func _physics_process(_delta: float) -> void:
 	if t_drive < 0 or game == null or game.get_session() == null:
@@ -110,13 +110,16 @@ func _physics_process(_delta: float) -> void:
 	if st.is_empty():
 		return
 	if sim_start < 0:
-		sim_start = st.sim_time
+		# Spawn on a movie-frame boundary so every run steps identically.
+		if st.frame_tick != 0:
+			return
+		sim_start = st.game_time
 		# SSRC_TEST_SPAWN: place the car again on this tick, so time 0 is
 		# the moment of spawning (as when teleporting the original's car).
 		var sp = OS.get_environment("SSRC_TEST_SPAWN").split_floats(",")
 		if sp.size() >= 3:
 			game.get_session().test_spawn(Vector3(sp[0], sp[1], sp[2]), sp[3] if sp.size() > 3 else 0.0)
-	t_drive = (st.sim_time - sim_start) / 2.25
+	t_drive = st.game_time - sim_start
 	if telemetry != null:
 		log_state()
 	for i in inputs:

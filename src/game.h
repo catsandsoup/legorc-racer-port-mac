@@ -66,6 +66,8 @@ private:
 	SoundSystem *sound = nullptr;
 	DrivingSession *session = nullptr;
 	int pending_mode = 0;
+	int last_mode = 0;
+	bool help_seen = false;
 
 	// UI
 	CanvasLayer *ui_layer = nullptr;

@@ -64,6 +64,7 @@ void Settings::load() {
 	show_fps = bool(cf->get_value("display", "show_fps", show_fps));
 	LOADV("gameplay", game_speed);
 	LOADV("gameplay", physics_substeps);
+	LOADV("gameplay", help_every_race);
 	LOADV("audio", music_volume);
 	LOADV("audio", effects_volume);
 #undef LOADV
@@ -88,6 +89,7 @@ void Settings::save() const {
 	SAVEV("display", show_fps);
 	SAVEV("gameplay", game_speed);
 	SAVEV("gameplay", physics_substeps);
+	SAVEV("gameplay", help_every_race);
 	SAVEV("audio", music_volume);
 	SAVEV("audio", effects_volume);
 #undef SAVEV
@@ -138,7 +140,7 @@ static void add_joy_axis(const StringName &action, JoyAxis a, real_t dir) {
 
 void SupersonicGame::build_input_map() {
 	InputMap *im = InputMap::get_singleton();
-	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "back", "steer_left_analog", "steer_right_analog", "menu_accept", "menu_up", "menu_down" };
+	const char *actions[] = { "accelerate", "brake", "steer_left", "steer_right", "handbrake", "back", "steer_left_analog", "steer_right_analog", "menu_accept", "menu_up", "menu_down", "reset_car" };
 	for (const char *a : actions) {
 		if (!im->has_action(a)) {
 			im->add_action(a, 0.3);
@@ -162,6 +164,9 @@ void SupersonicGame::build_input_map() {
 	add_joy_button("back", JOY_BUTTON_BACK);
 	add_joy_axis("steer_left_analog", JOY_AXIS_LEFT_X, -1);
 	add_joy_axis("steer_right_analog", JOY_AXIS_LEFT_X, 1);
+	// Not in the original: put the car back on its wheels on demand.
+	add_key("reset_car", KEY_R);
+	add_joy_button("reset_car", JOY_BUTTON_Y);
 	add_key("menu_accept", KEY_ENTER);
 	add_key("menu_accept", KEY_KP_ENTER);
 	add_key("menu_accept", KEY_SPACE);
@@ -214,7 +219,18 @@ void SupersonicGame::_ready() {
 	apply_settings();
 	build_native_menu();
 
-	if (Assets::has_converted_data()) {
+	// "--race N" (after "--"): straight into challenge N, skipping the menus.
+	int race = -1;
+	PackedStringArray uargs = OS::get_singleton()->get_cmdline_user_args();
+	for (int i = 0; i + 1 < uargs.size(); i++) {
+		if (uargs[i] == "--race") {
+			race = CLAMP(uargs[i + 1].to_int(), 0, int(ModeId::COUNT) - 1);
+		}
+	}
+	if (Assets::has_converted_data() && race >= 0) {
+		help_seen = true;
+		start_mode(race);
+	} else if (Assets::has_converted_data()) {
 		go_title();
 	} else {
 		try_auto_import();
@@ -299,13 +315,16 @@ void SupersonicGame::apply_settings() {
 	vp->set_use_taa(aa == 5 && forward_plus);
 	vp->set_anisotropic_filtering_level(prefs.texture_filter == 2 ? Viewport::ANISOTROPY_16X : Viewport::ANISOTROPY_DISABLED);
 
-	// Original pacing: 60 updates per real second, 0.0375 sim seconds each.
-	Tuning base;
+	// Original pacing (Tuning::frame_rate): 40 frames a second, each split
+	// into the original's physics updates; one Godot physics tick is the
+	// common divisor of their step lengths (12.5 ms of simulation), split
+	// further by the Physics Rate setting.
+	FrameTiming ft = frame_timing(Tuning().frame_rate);
 	real_t speed = CLAMP(prefs.game_speed, 0.25, 4.0);
-	int substeps = CLAMP(prefs.physics_substeps, 1, 8);
-	Engine::get_singleton()->set_physics_ticks_per_second(int(Math::round(base.logic_hz * speed * substeps)));
-	Engine::get_singleton()->set_time_scale(base.sim_speed * speed);
-	Engine::get_singleton()->set_max_physics_steps_per_frame(8 * substeps);
+	int substeps = CLAMP(prefs.physics_substeps, 1, 4);
+	Engine::get_singleton()->set_physics_ticks_per_second(int(Math::round(ft.frame_rate * ft.ticks_per_frame * speed * substeps)));
+	Engine::get_singleton()->set_time_scale(ft.sim_per_real * speed);
+	Engine::get_singleton()->set_max_physics_steps_per_frame(4 * ft.ticks_per_frame * substeps);
 
 	if (sound) {
 		sound->set_bus_volumes(prefs.music_volume, prefs.effects_volume);
@@ -451,6 +470,7 @@ void SupersonicGame::update_buttons() {
 }
 
 void SupersonicGame::start_mode(int mode) {
+	last_mode = mode;
 	screen = Screen::LOADING;
 	clear_stage();
 	backdrop->set_visible(true);
@@ -501,6 +521,10 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 			// gameTypeManager: keyPressed("s") toggled sound on/off.
 			muted = !muted;
 			AudioServer::get_singleton()->set_bus_mute(0, muted);
+			return;
+		}
+		if (key->get_keycode() == KEY_F5 || (key->get_keycode() == KEY_R && key->is_command_or_control_pressed())) {
+			run_action("restart_race");
 			return;
 		}
 		// The menu bar is hidden in full screen, so its shortcuts must
@@ -569,7 +593,13 @@ void SupersonicGame::_unhandled_input(const Ref<InputEvent> &event) {
 			}
 			if (chosen >= 0 && is_unlocked(ModeId(chosen))) {
 				sound->play(5, PlayItem{ "buttonclick" });
-				fade_out([this, chosen]() { go_help(chosen); });
+				if (prefs.help_every_race || !help_seen) {
+					help_seen = true;
+					fade_out([this, chosen]() { go_help(chosen); });
+				} else {
+					sound->fade_out(8, 500);
+					fade_out([this, chosen]() { start_mode(chosen); });
+				}
 			}
 			break;
 		}
@@ -787,7 +817,8 @@ void SupersonicGame::build_options() {
 		{ "Display", "Window", "window_mode", { { "Windowed", 0 }, { "Fullscreen", 1 }, { "Exclusive Fullscreen", 2 } } },
 		{ "Display", "Window Size", "window_size", { { "960 x 720", 0 }, { "1280 x 960", 1 }, { "1440 x 1080", 2 }, { "1600 x 1200", 3 }, { "1280 x 720", 4 }, { "1920 x 1080", 5 }, { "2560 x 1440", 6 }, { "3840 x 2160 (4K)", 7 } } },
 		{ "Display", "Render Resolution", "render_scale", pct({ 50, 67, 75, 100, 125, 150, 200 }) },
-		{ "Display", "Upscaler", "upscaler", { { "Bilinear", 0 }, { "AMD FSR 1", 1 }, { "AMD FSR 2", 2 }, { "MetalFX Spatial", 3 }, { "MetalFX Temporal", 4 } } },
+		// FSR 2 and MetalFX froze the owner's Mac; they return once proven.
+		{ "Display", "Upscaler", "upscaler", { { "Bilinear", 0 }, { "AMD FSR 1", 1 } } },
 		{ "Display", "Anti-aliasing", "antialiasing", { { "Off", 0 }, { "MSAA 2x", 1 }, { "MSAA 4x", 2 }, { "MSAA 8x", 3 }, { "FXAA", 4 }, { "TAA", 5 } } },
 		{ "Display", "V-Sync", "vsync", { { "Off", 0 }, { "On", 1 }, { "Adaptive", 2 }, { "Mailbox", 3 } } },
 		{ "Display", "Frame Rate Limit", "max_fps", { { "30", 30 }, { "60", 60 }, { "120", 120 }, { "144", 144 }, { "240", 240 }, { "Unlimited", 0 } } },
@@ -797,7 +828,8 @@ void SupersonicGame::build_options() {
 		{ "Graphics", "Field of View", "fov", { { "60", 60 }, { "70 (original)", 0 }, { "80", 80 }, { "90", 90 }, { "100", 100 } } },
 		{ "Graphics", "Camera", "camera_mode", { { "Chase (original)", 0 }, { "Overhead", 1 } } },
 		{ "Gameplay", "Game Speed", "game_speed", pct({ 50, 75, 100, 125, 150, 200 }) },
-		{ "Gameplay", "Physics Rate", "physics_substeps", { { "60 Hz (original)", 1 }, { "120 Hz", 2 }, { "240 Hz", 4 }, { "480 Hz", 8 } } },
+		{ "Gameplay", "Physics Precision", "physics_substeps", { { "Standard", 1 }, { "High", 2 }, { "Very High", 4 } } },
+		{ "Gameplay", "Help Screen", "help_every_race", { { "First race only", 0 }, { "Before every race (original)", 1 } } },
 		{ "Audio", "Music Volume", "music_volume", pct({ 0, 25, 50, 75, 100 }) },
 		{ "Audio", "Effects Volume", "effects_volume", pct({ 0, 25, 50, 75, 100 }) },
 	};
@@ -825,6 +857,7 @@ double SupersonicGame::get_option(const String &key) const {
 	if (key == "camera_mode") return prefs.camera_mode;
 	if (key == "game_speed") return prefs.game_speed;
 	if (key == "physics_substeps") return prefs.physics_substeps;
+	if (key == "help_every_race") return prefs.help_every_race ? 1 : 0;
 	if (key == "music_volume") return prefs.music_volume;
 	if (key == "effects_volume") return prefs.effects_volume;
 	return 0;
@@ -848,12 +881,16 @@ void SupersonicGame::set_option(const String &key, double v) {
 	else if (key == "fov") prefs.fov = v;
 	else if (key == "camera_mode") prefs.camera_mode = int(v);
 	else if (key == "game_speed") prefs.game_speed = v;
-	else if (key == "physics_substeps") prefs.physics_substeps = int(v);
+	else if (key == "physics_substeps") prefs.physics_substeps = CLAMP(int(v), 1, 4);
+	else if (key == "help_every_race") prefs.help_every_race = v > 0.5;
 	else if (key == "music_volume") prefs.music_volume = v;
 	else if (key == "effects_volume") prefs.effects_volume = v;
 	prefs.save();
 	apply_settings();
 	refresh_native_menu();
+	if (session && (key == "lighting" || key == "texture_filter")) {
+		session->apply_graphics(); // live, no restart
+	}
 	if (session && (key == "fov")) {
 		ChaseCamera *c = session->get_camera();
 		if (c && c->camera) {
@@ -889,6 +926,12 @@ void SupersonicGame::run_action(const String &action) {
 	} else if (action == "reimport") {
 		DisplayServer::get_singleton()->file_dialog_show("Locate your Supersonic RC files", OS::get_singleton()->get_system_dir(OS::SYSTEM_DIR_DOWNLOADS), "", false,
 				DisplayServer::FILE_DIALOG_MODE_OPEN_ANY, PackedStringArray({ "*.dcr, *.zip ; Supersonic RC game files" }), callable_mp(this, &SupersonicGame::on_file_dialog));
+	} else if (action == "restart_race") {
+		if (session && screen == Screen::DRIVING) {
+			sound->stop_all();
+			int m = last_mode;
+			fade_out([this, m]() { start_mode(m); });
+		}
 	} else if (action == "settings") {
 		toggle_settings_panel();
 	} else if (action == "quit") {
@@ -1042,7 +1085,7 @@ void SupersonicGame::build_settings_panel() {
 		vb->add_child(row);
 	}
 	HBoxContainer *actions = memnew(HBoxContainer);
-	const char *acts[][2] = { { "Main Menu", "main_menu" }, { "Unlock All", "unlock_all" }, { "Mods Folder", "open_mods" }, { "Quit", "quit" } };
+	const char *acts[][2] = { { "Main Menu", "main_menu" }, { "Restart Race", "restart_race" }, { "Unlock All", "unlock_all" }, { "Mods Folder", "open_mods" }, { "Quit", "quit" } };
 	for (auto &a : acts) {
 		Button *b = memnew(Button);
 		b->set_text(a[0]);

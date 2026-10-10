@@ -158,13 +158,41 @@ The port side uses `SSRC_TEST_SPAWN` and `SSRC_TEST_TELEMETRY`.
 Add a route for every bug before fixing it, and re-run all routes after
 every physics or rendering change.
 
-First result (`hard_left`): acceleration matches the original. The
-suspension doesn't:
+### What the comparisons found (session 1)
 
-- roll and bounce oscillate about 1.5× slower (√2.25, the time scale) and
-  wider
-- pitch reaches 20° against the original's 6°
-- the car turns 287° against 198° (spread 179–236°)
+1. **The original runs at 40 fps, not 60.** The movie's config frame rate
+   is 40 and the score has no tempo changes. `drivingManager.update` splits
+   each 25 ms frame into a 5 ms chunk and a 20 ms chunk. `havokManager`
+   clamps each to 3–15 ms and steps Havok 2.5× that. The result is
+   12.5 + 37.5 ms of simulation per frame (2.0×), with the wheel forces,
+   steering and camera updated per chunk (80 times a second).
+   - Measured under Wine: 39 fps, 2.02×.
+   - The port had assumed 60 updates of 37.5 ms (2.25×).
+   - It now uses the original cadence (`frame_timing()` in
+     `src/tuning.cpp`), and straight-line speed and braking match.
+2. **Torque scaling.** The DirPlayer-derived dividers (434 for roll and
+   pitch, 158.76 for yaw, applied on world axes) didn't match the real
+   Havok. They now apply on the car's own axes, fitted against the
+   original on `step_steer` and `slalom`: pitch 500, roll 1400, yaw 1000.
+
+   | Step steer | Original | Port now |
+   |---|---|---|
+   | Turn | 134° | 128° |
+   | Roll | 5.6° | 6.5° |
+   | Pitch | 0.8° | 0.9° |
+
+   Slalom roll matches (16.1° vs 16.2°).
+3. **The original's mass properties** (mass 3, box inertia, restitution
+   0.01, friction 10) sit in memory next to the state, and equal the
+   port's.
+4. **Still different:**
+   - the original loses speed in hard turns and the port doesn't
+     (`step_steer` top speed 305 vs 344)
+   - the paths drift apart slightly before steering starts
+   - the drop test bounces more in the port (less damping)
+
+   These are the next physics items. The dividers are a fit, not a
+   derivation, so re-check them whenever the force code changes.
 
 ## Developer and test variables (never for players)
 

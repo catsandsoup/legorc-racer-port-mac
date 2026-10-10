@@ -199,6 +199,7 @@ public:
 	// Test hook: put the car at rest at pos (Director units), heading
 	// about +Z in degrees (0 faces +Y).
 	void test_spawn(const Vector3 &pos, real_t heading_deg);
+	void apply_graphics(); // re-apply lighting/texture settings live
 
 protected:
 	static void _bind_methods() {
@@ -220,6 +221,10 @@ private:
 	bool finished = false;
 	int tick_counter = 0;
 	int logic_ticks = 0;
+	int frames = 0;
+	bool reset_held = false;
+	std::vector<Node *> lighting_nodes;
+	FrameTiming timing;
 	Node3D *arrow = nullptr;
 	bool arrow_visible = false;
 	Vector3 arrow_target;
@@ -227,8 +232,11 @@ private:
 
 	void build_world();
 	void run_collision_probe();
+	void setup_lighting();
+	void tag_materials(Node *root, const String &tex_dir, bool overlay);
 	void load_lights();
-	void logic_tick();
+	void logic_update(); // drivingManager.update (one chunk)
+	void frame_step(); // actorList stepFrame (once per movie frame)
 };
 
 Transform3D director_to_godot_xform(const Transform3D &d);

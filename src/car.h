@@ -83,6 +83,7 @@ public:
 	void stop_driving();
 	void shutdown_sound();
 	void spawn_at(const DXform &x); // test hook: place at rest
+	void set_upright(real_t dz); // R key: on its wheels, same heading
 	void reset_to(const Vector3 &pos_d, bool reset_rotation);
 	void teleport_up(real_t dz);
 

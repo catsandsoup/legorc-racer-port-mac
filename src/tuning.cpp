@@ -4,10 +4,46 @@
 
 namespace ssrc {
 
+FrameTiming frame_timing(real_t frame_rate) {
+	// drivingManager.update: chunks of at most 20 ms, the remainder first.
+	int frame_ms = int(Math::round(1000.0 / MAX(frame_rate, 1.0)));
+	std::vector<int> chunks;
+	int rest = MIN(frame_ms, 100);
+	while (rest > 20) {
+		chunks.insert(chunks.begin(), 20);
+		rest -= 20;
+	}
+	chunks.insert(chunks.begin(), rest);
+	// havokManager.update: clamp to 3..15 ms, step 2.5x that. Work in
+	// half-milliseconds of simulation so the base tick is exact.
+	std::vector<int> sim_half_ms;
+	int total = 0, g = 0;
+	for (int c : chunks) {
+		int h = CLAMP(c, 3, 15) * 5; // 2.5x in half-ms
+		sim_half_ms.push_back(h);
+		total += h;
+		int a = g, b = h;
+		while (b) {
+			int t = a % b;
+			a = b;
+			b = t;
+		}
+		g = a;
+	}
+	FrameTiming ft;
+	ft.frame_rate = 1000.0 / frame_ms;
+	for (int h : sim_half_ms) {
+		ft.chunk_ticks.push_back(h / g);
+	}
+	ft.ticks_per_frame = total / g;
+	ft.tick_sim = g / 2000.0;
+	ft.sim_per_real = (total / 2000.0) / (frame_ms / 1000.0);
+	return ft;
+}
+
 #define SSRC_TUNING_FIELDS(X) \
 	X(gravity_factor)        \
-	X(sim_speed)             \
-	X(logic_hz)              \
+	X(frame_rate)            \
 	X(car_mass)              \
 	X(car_friction)          \
 	X(car_restitution)       \
@@ -16,7 +52,8 @@ namespace ssrc {
 	X(com_shift_z)           \
 	X(max_angular_on_collision) \
 	X(force_divider)         \
-	X(torque_divider_pitch_roll) \
+	X(torque_divider_pitch)  \
+	X(torque_divider_roll)   \
 	X(torque_divider_yaw)    \
 	X(angular_damp)          \
 	X(start_x)               \
