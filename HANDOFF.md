@@ -68,12 +68,14 @@ latest commit is the next download.
 1. **Done: car textures.** With the +0.5 shift, the car needs the V flip
    too. Matched views score 4.0–7.5 everywhere. The README showcase is
    done as well.
-2. **The arrow shakes at speed, and the chassis wobbles against the
-   wheels.** The wheel visuals and the arrow update on logic ticks
-   without interpolation; smooth them like the car body. The owner's fps
-   fell from 92 to 48 after the 40 fps cadence change (320 physics
-   ticks/s): profile it, and consider Physics Precision Standard
-   (160 ticks/s) as the default.
+2. **Done (Linux): arrow shake and wheel wobble.** The arrow is placed
+   every rendered frame from the interpolated camera
+   (`DrivingSession::place_arrow`), and the wheels keep their pose
+   relative to the body and follow it every physics tick
+   (`Wheel::place_visual`). Ask the owner to confirm on the Mac.
+   **Still open:** the owner's fps fell from 92 to 48 after the 40 fps
+   cadence change (320 physics ticks/s): profile it, and consider Physics
+   Precision Standard (160 ticks/s) as the default.
 3. **Handling the owner still feels:**
    - turning is slow at high speed
    - the car bounces on angled surfaces (skate ramp, curved walls)

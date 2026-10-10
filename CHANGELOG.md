@@ -11,6 +11,10 @@ Project owner: catsandsoup.
   also flipped the wrong way. All now match the original (matched-view
   scores 4.0–7.5, down from 9–20). Re-import your game files to get the
   fix.
+- **Smoother arrow and wheels.** The checkpoint arrow is placed every
+  rendered frame from the smoothed camera, so it no longer shakes at speed.
+  The wheels follow the car body on every physics tick instead of only on
+  game-logic updates, so the chassis no longer wobbles against them.
 - The pause menu now freezes the race and its timer.
 - **Timing now matches the original.** The movie runs at 40 frames a second
   (its config frame rate), and each frame is split into two physics updates

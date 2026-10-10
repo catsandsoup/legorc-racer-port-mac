@@ -242,6 +242,7 @@ private:
 	void load_lights();
 	void logic_update(); // drivingManager.update (one chunk)
 	void frame_step(); // actorList stepFrame (once per movie frame)
+	void place_arrow(); // every rendered frame
 };
 
 Transform3D director_to_godot_xform(const Transform3D &d);

@@ -57,7 +57,8 @@ behind the work. Owner: catsandsoup. The newest session comes first.
    (shelves, dinosaur), and the car's lack of flip isn't right for every
    car mesh. This is the cause of the "broken textures". Not fixed yet.
 6. The movie's 40 fps cadence raised the physics tick rate. The owner's fps
-   fell from 92 to 48, and the arrow and wheels jitter. Not fixed yet.
+   fell from 92 to 48 (not fixed yet), and the arrow and wheels jittered
+   (fixed: both now follow the smoothed motion).
 7. Switching upscalers freezes the Mac build, so they are hidden.
 
 ### The owner's latest requests (end of session 1)
@@ -100,4 +101,5 @@ behind the work. Owner: catsandsoup. The newest session comes first.
 | Texture coordinates (shelves, dinosaur) | **Done**: the CLOD decoder's UVs were half a tile low; the converter now shifts them by +0.5 (not the lightmap UVs). Matched views went from scores 9–20 to 6.6–10.8; shelves and dinosaur match the original |
 | Car textures | **Done**: with the +0.5 shift, the car needs the same V flip as the world (`importer/src/movie.rs`). The car's rear now matches the original (dark, red side lights). All 12 matched views score 4.0–7.5 |
 | README showcase (menus, why replaced, modding for people and agents, call for ports, co-op) | **Done** |
-| Arrow and wheel jitter; fps drop from 92 to 48 | **To do** |
+| Arrow and wheel jitter | **Done (Linux)**: arrow placed every rendered frame from the interpolated camera; wheels follow the body every physics tick. Steady in consecutive frames at speed; not yet felt on the owner's Mac |
+| fps drop from 92 to 48 | **To do** |

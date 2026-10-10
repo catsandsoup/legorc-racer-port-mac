@@ -41,6 +41,7 @@ public:
 	void update(const DriveInput &in);
 	void stop_driving() { stopped = true; }
 	void sync_visual();
+	void place_visual(); // every physics tick: follow the car body
 
 	bool on_ground = false;
 	real_t load = 0;
@@ -62,6 +63,7 @@ private:
 	// Visuals (pVisualGroup / flip group / pVisualModel).
 	Node3D *visual_group = nullptr;
 	Node3D *visual_model = nullptr;
+	Transform3D visual_local; // wheel pose relative to the car body
 	Vector3 visual_scale;
 	Vector3 visual_group_pos; // Director space
 	DXform world_xform() const; // pmodel world transform

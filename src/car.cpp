@@ -233,6 +233,9 @@ void Car::flush_forces() {
 		body->apply_central_force(f.force_g);
 		body->apply_torque(f.torque_g);
 	}
+	for (Wheel *w : wheels) {
+		w->place_visual();
+	}
 }
 
 void Car::update(const DriveInput &in) {
@@ -535,7 +538,18 @@ void Wheel::sync_visual() {
 	Basis flip = (index == 1 || index == 2) ? Basis(Vector3(0, 1, 0), Math_PI) : Basis();
 	Basis bd = car->xform.basis * Basis().scaled(visual_scale) * flip * steer * spin;
 	Basis bg = (axis_map() * bd).scaled(Vector3(WORLD_SCALE, WORLD_SCALE, WORLD_SCALE));
-	visual_model->set_global_transform(Transform3D(bg, d2g(visual_group_pos)));
+	// Keep the wheel's pose relative to the car body and re-apply it on
+	// every physics tick (place_visual), so wheels and body move together
+	// instead of the wheels stepping only on game-logic updates.
+	Transform3D world(bg, d2g(visual_group_pos));
+	visual_local = car->get_body()->get_global_transform().affine_inverse() * world;
+	visual_model->set_global_transform(world);
+}
+
+void Wheel::place_visual() {
+	if (visual_model) {
+		visual_model->set_global_transform(car->get_body()->get_global_transform() * visual_local);
+	}
 }
 
 } // namespace ssrc

@@ -876,6 +876,9 @@ void DrivingSession::setup(SupersonicGame *p_game, ModeId mode_id) {
 	(void)prop_model_xform("scenes/arrow.glb", &amesh);
 	if (amesh) {
 		arrow = amesh;
+		// Placed every rendered frame from the smoothed camera, so the
+		// engine must not smooth it a second time.
+		arrow->set_physics_interpolation_mode(Node::PHYSICS_INTERPOLATION_MODE_OFF);
 		add_child(arrow);
 	}
 
@@ -1296,26 +1299,32 @@ void DrivingSession::frame_step() {
 			UtilityFunctions::print("[pick] ", pt, " -> ", best_name);
 		}
 	}
-	if (arrow && arrow_visible) {
-		Transform3D cg = cam->camera->get_global_transform();
-		Vector3 pos_g = cg.xform(Vector3(0, -12, -50) * WORLD_SCALE);
-		Vector3 pos_d = g2d(pos_g);
-		Vector3 target = arrow_target;
-		target.z = pos_d.z;
-		Vector3 y = target - pos_d;
-		if (y.length() > 1e-4) {
-			y.normalize();
-			Vector3 up = g2d_dir(cg.basis.get_column(1)).normalized();
-			Vector3 x = y.cross(up).normalized();
-			Vector3 z = x.cross(y).normalized();
-			Transform3D d(Basis(x * 0.05, y * 0.05, z * 0.05), pos_d);
-			// The arrow had its own camera ("arrowcam", Director's default
-			// 30 degree field of view) layered over the main one. Emulate that
-			// projection by compressing the arrow along the view axis.
-			real_t k = Math::tan(Math::deg_to_rad(cam->camera->get_fov() * 0.5)) / Math::tan(Math::deg_to_rad(15.0));
-			Transform3D squash(Basis().scaled(Vector3(1, 1, 1.0 / k)), Vector3());
-			arrow->set_global_transform(cg * squash * cg.affine_inverse() * director_to_godot_xform(d));
-		}
+}
+
+// Every rendered frame, from the camera as drawn (interpolated). Placing it
+// on physics ticks made it shake more the faster the car went.
+void DrivingSession::place_arrow() {
+	if (!arrow || !arrow_visible || !cam) {
+		return;
+	}
+	Transform3D cg = cam->camera->get_global_transform_interpolated();
+	Vector3 pos_g = cg.xform(Vector3(0, -12, -50) * WORLD_SCALE);
+	Vector3 pos_d = g2d(pos_g);
+	Vector3 target = arrow_target;
+	target.z = pos_d.z;
+	Vector3 y = target - pos_d;
+	if (y.length() > 1e-4) {
+		y.normalize();
+		Vector3 up = g2d_dir(cg.basis.get_column(1)).normalized();
+		Vector3 x = y.cross(up).normalized();
+		Vector3 z = x.cross(y).normalized();
+		Transform3D d(Basis(x * 0.05, y * 0.05, z * 0.05), pos_d);
+		// The arrow had its own camera ("arrowcam", Director's default
+		// 30 degree field of view) layered over the main one. Emulate that
+		// projection by compressing the arrow along the view axis.
+		real_t k = Math::tan(Math::deg_to_rad(cam->camera->get_fov() * 0.5)) / Math::tan(Math::deg_to_rad(15.0));
+		Transform3D squash(Basis().scaled(Vector3(1, 1, 1.0 / k)), Vector3());
+		arrow->set_global_transform(cg * squash * cg.affine_inverse() * director_to_godot_xform(d));
 	}
 }
 
@@ -1353,6 +1362,9 @@ void DrivingSession::_physics_process(double delta) {
 
 void DrivingSession::_process(double) {
 	advance_clock();
+	if (running) {
+		place_arrow();
+	}
 	static uint64_t last = 0;
 	uint64_t now = Time::get_singleton()->get_ticks_usec();
 	real_t dt_ms = last ? (now - last) / 1000.0 : 0;
